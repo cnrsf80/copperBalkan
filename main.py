@@ -87,21 +87,25 @@ def create_site_matrix(clusters,limit):
 
 
 
-limit=50
+def create_partition_from_asyncfluid(G,n_community):
+    coms = community.asyn_fluidc(G, n_community, 100)
+    partition = []
+    for c in coms: partition.append(c)
+    return partition
+
+limit=350
 n_community=4
 
-G=nx.from_numpy_matrix(create_matrix(700,limit))
-#partition = community.kernighan_lin_bisection(G,None,20,weight='weight')
+G0=nx.from_numpy_matrix(create_matrix(800,limit))
 
+#partition = community.kernighan_lin_bisection(G,None,20,weight='weight')
 #comp=community.girvan_newman(G)
 #partition = tuple(sorted(c) for c in next(comp))
 
-coms=community.asyn_fluidc(G,n_community,100)
-partition=[]
-for c in coms:
-    partition.append(c)
-
-create_site_matrix(partition,limit)
+M=create_site_matrix(create_partition_from_asyncfluid(G0,3),limit)
+G=nx.from_numpy_matrix(M)
+partition=create_partition_from_asyncfluid(G,3)
+trace_artefact(G,partition)
 
 
 
