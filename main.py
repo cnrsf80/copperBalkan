@@ -3,8 +3,7 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import community
-from community.community_louvain import best_partition
+# from community.community_louvain import best_partition
 
 
 def distance(i,j):
@@ -33,19 +32,20 @@ matrice_ww=v_seuil(matrice,700)
 G = nx.from_numpy_matrix(matrice_ww)
 nx.draw(G)
 
-partition=best_partition(G)
-
-#drawing
-size = float(len(set(partition.values())))
-pos = nx.spring_layout(G)
-count = 0.
-for com in set(partition.values()) :
-    count = count + 1.
-    list_nodes = [nodes for nodes in partition.keys()
-                                if partition[nodes] == com]
-    nx.draw_networkx_nodes(G, pos, list_nodes, node_size = 5,
-                                node_color = str(count / size))
-
-
-nx.draw_networkx_edges(G,pos, alpha=0.5)
+#
+# partition=best_partition(G)
+#
+# #drawing
+# size = float(len(set(partition.values())))
+# pos = nx.spring_layout(G)
+# count = 0.
+# for com in set(partition.values()) :
+#     count = count + 1.
+#     list_nodes = [nodes for nodes in partition.keys()
+#                                 if partition[nodes] == com]
+#     nx.draw_networkx_nodes(G, pos, list_nodes, node_size = 5,
+#                                 node_color = str(count / size))
+#
+#
+# nx.draw_networkx_edges(G,pos, alpha=0.5)
 plt.show()
