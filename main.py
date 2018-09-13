@@ -21,7 +21,7 @@ class cluster:
         self.color= color
 
     def contain(self,i):
-        for n in nodes:
+        for n in self.nodes:
             if n.ix == i:return True
 
 
@@ -74,7 +74,7 @@ def trace_artefact(G,partitions):
 
 def create_site_matrix(clusters,limit):
     data = pd.read_excel("cnx013_supp_table_s1.xlsx").head(limit)
-    sites=data.loc[:"Site":"Type of site/context"]
+    sites=data.loc[:,"Site":"Type of site/context"]
     sites.drop_duplicates()
     M = np.asmatrix(np.zeros((len(sites), len(sites))), dtype=np.int16)
     for i in sites.index:
@@ -97,7 +97,8 @@ limit=350
 n_community=4
 
 G0=nx.from_numpy_matrix(create_matrix(800,limit))
-
+nx.draw(G0)
+plt.show()
 #partition = community.kernighan_lin_bisection(G,None,20,weight='weight')
 #comp=community.girvan_newman(G)
 #partition = tuple(sorted(c) for c in next(comp))
