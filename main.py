@@ -1,10 +1,11 @@
 import os.path
-
+import metrics
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 import pandas as pd
 import folium
+import sklearn.cluster as sk
 from networkx.algorithms import community
 
 colors = ["red", "green", "blue", "yellow", "grey", "purple", "orange"]
@@ -34,17 +35,17 @@ class cluster:
 
 #Definitions
 def distance(i,j):
-    return np.linalg.norm(i.values - j.values).round(0)
+    return np.linalg.norm(i.values - j.values)
 
 v_seuil=np.vectorize(lambda x,y:1 if x<y else 0)
 
 
-def create_matrix(data,seuil):
+def create_matrix(data,seuil,start_col,end_col):
     if os.path.isfile("adjacence_artefact.csv") and len(data)>149:
-        matrice=np.asmatrix(np.loadtxt("adjacence_artefact.csv",delimiter=" "),dtype=np.int16)
+        matrice=np.asmatrix(np.loadtxt("adjacence_artefact.csv",delimiter=" "))
     else:
-        composition = data.loc[:, "As (ppm)":"Se (ppm)"]
-        matrice = np.asmatrix(np.zeros((len(data),len(data))),dtype=np.int16)
+        composition = data.loc[:, start_col:end_col]
+        matrice = np.asmatrix(np.zeros((len(data),len(data))))
 
         for i in composition.index:
             for j in composition.index:
@@ -89,7 +90,7 @@ def create_sites_df(data):
 
 def create_site_matrix(data,artefact_clusters):
     sites=create_sites_df(data)
-    M = np.asmatrix(np.zeros((len(sites), len(sites))), dtype=np.int16)
+    M = np.asmatrix(np.zeros((len(sites), len(sites))))
     liste_sites = list(sites.Site)
     for c in artefact_clusters:
         for s_i in data.Site[c.index]:
@@ -109,10 +110,33 @@ def create_clusters_from_girvannewman(G):
 
     return clusters
 
+#http://scikit-learn.org/stable/modules/generated/sklearn.cluster.dbscan.html#sklearn.cluster.dbscan
+def create_clusters_from_dbscan(M,min_distance,min_elements):
+    clusters = []
+    db=sk.DBSCAN(metric="precomputed",eps=min_distance,min_samples=min_elements,n_jobs=4).fit(M)
+    core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
+    core_samples_mask[db.core_sample_indices_] = True
+    labels = db.labels_
+
+    n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
+    for i in range(n_clusters_):
+        clusters.append(cluster("cluster"+str(i),[]))
+
+    print('Estimated number of clusters: %d' % n_clusters_)
+
+    i=0
+    for l in db.labels_:
+        if l>=0:
+            clusters[l].index.append(i)
+        i=i+1
+
+
+    return clusters
+
 
 def create_two_clusters(G:nx.Graph):
     clusters = []
-    partition = community.kernighan_lin_bisection(G, None, 20, weight='weight')
+    partition = community.kernighan_lin_bisection(G, None, 500, weight='weight')
 
     i=0
     for p in partition:
@@ -123,10 +147,11 @@ def create_two_clusters(G:nx.Graph):
 
 def create_ncluster(G:nx.Graph,target=4):
     clusters =[cluster("premier",G.nodes)]
-
+    print("Recherche des clusters")
     backup_G=G.copy()
     while len(clusters) < target:
        #on cherche le plus grand cluster
+       print(target-len(clusters))
        maxlen=0
        k=-1
        for i in range(0,len(clusters)):
@@ -158,15 +183,27 @@ def draw_site_onmap(mymap:folium.Map, G, sites_clusters, sites:pd.DataFrame ,fil
 
 
 
-data = pd.read_excel("cnx013_supp_table_s1.xlsx")
+#data = pd.read_excel("cnx013_supp_table_s1.xlsx").head(200)
+data = pd.read_excel("donnéesCIPIA.xlsx")
+data["Ref"]=data.index
+data.index=range(len(data))
 
-G0=nx.from_numpy_matrix(create_matrix(data,0))
-artefact_clusters=create_ncluster(G0,40);
+#M0=create_matrix(data,0,"As (ppm)","Se (ppm)")
+M0=create_matrix(data,0,"Dim.1","Dim.10")
+plt.matshow(M0, cmap=plt.cm.Blues)
+plt.show()
 
+G0=nx.from_numpy_matrix(M0)
+#artefact_clusters=create_ncluster(G0,8);
+artefact_clusters=create_clusters_from_dbscan(M0,2,2);
 #artefact_clusters=create_clusters_from_girvannewman(G0);
 
-for c in artefact_clusters:c.print(data,"Sample label")
+for c in artefact_clusters:c.print(data,"Ref")
+#for c in artefact_clusters:c.print(data,"Sample label")
 #trace_artefact(G0,artefact_clusters,data,"Sample label")
+
+
+exit(0)
 
 M=create_site_matrix(data,artefact_clusters)
 G=nx.from_numpy_matrix(M)
@@ -180,10 +217,5 @@ trace_artefact(G,sites_clusters,data,"Site")
 #https://python-visualization.github.io/folium/docs-v0.6.0/
 #mymap=folium.Map(location=[48,2],zoom_start=13)
 #draw_site_onmap(mymap,G,sites_clusters,create_sites_df(data),"map.html")
-
-
-
-
-
 
 
