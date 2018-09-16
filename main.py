@@ -88,6 +88,7 @@ def create_sites_df(data):
     sites=sites.drop_duplicates("Site")
     return sites
 
+
 def create_site_matrix(data,artefact_clusters):
     sites=create_sites_df(data)
     M = np.asmatrix(np.zeros((len(sites), len(sites))))
@@ -130,8 +131,8 @@ def create_clusters_from_dbscan(M,min_distance,min_elements):
             clusters[l].index.append(i)
         i=i+1
 
-
     return clusters
+
 
 
 def create_two_clusters(G:nx.Graph):
@@ -143,6 +144,7 @@ def create_two_clusters(G:nx.Graph):
         clusters.append(cluster("kernighan_lin - "+str(i),p))
         i=i+1
     return clusters
+
 
 
 def create_ncluster(G:nx.Graph,target=4):
@@ -163,8 +165,8 @@ def create_ncluster(G:nx.Graph,target=4):
        clusters.remove(clusters[k])
        for c in create_two_clusters(G):clusters.append(c)
 
-
     return clusters
+
 
 
 def create_clusters_from_asyncfluid(G,n_community):
@@ -173,6 +175,7 @@ def create_clusters_from_asyncfluid(G,n_community):
     for c in coms:
         partition.append(cluster("asyncfluid",c))
     return partition
+
 
 
 def draw_site_onmap(mymap:folium.Map, G, sites_clusters, sites:pd.DataFrame ,file):
@@ -194,8 +197,8 @@ plt.matshow(M0, cmap=plt.cm.Blues)
 plt.show()
 
 G0=nx.from_numpy_matrix(M0)
-#artefact_clusters=create_ncluster(G0,8);
-artefact_clusters=create_clusters_from_dbscan(M0,2,2);
+artefact_clusters=create_ncluster(G0,8);
+#artefact_clusters=create_clusters_from_dbscan(M0,3,1);
 #artefact_clusters=create_clusters_from_girvannewman(G0);
 
 for c in artefact_clusters:c.print(data,"Ref")
