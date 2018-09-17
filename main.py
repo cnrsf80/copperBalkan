@@ -6,7 +6,9 @@ import numpy as np
 import pandas as pd
 import folium
 import sklearn.cluster as sk
+from sklearn.mixture import GaussianMixture, gaussian_mixture
 from networkx.algorithms import community
+
 
 colors = ["red", "green", "blue", "yellow", "grey", "purple", "orange"]
 
@@ -110,26 +112,36 @@ def create_clusters_from_girvannewman(G):
 
     return clusters
 
-#http://scikit-learn.org/stable/modules/generated/sklearn.cluster.dbscan.html#sklearn.cluster.dbscan
-def create_clusters_from_dbscan(M,min_distance,min_elements):
-    clusters = []
-    db=sk.DBSCAN(metric="precomputed",eps=min_distance,min_samples=min_elements,n_jobs=4).fit(M)
-    core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
-    core_samples_mask[db.core_sample_indices_] = True
-    labels = db.labels_
+#http://scikit-learn.org/stable/modules/generated/sklearn.mixture.GaussianMixture.html#sklearn.mixture.GaussianMixture.fit
+def create_gaussian_mixture_model(data,params):
+    models = [GaussianMixture(n_components=param).fit(data)
+              for param in params]
+    plt.plot(params, [m.bic(data) for m in models], label="BIC")
+    plt.plot(params, [m.aic(data) for m in models], label="AIC")
+    plt.show()
 
-    n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
+
+#http://scikit-learn.org/stable/modules/generated/sklearn.cluster.dbscan.html#sklearn.cluster.dbscan
+def create_clusters_from_dbscan(M,l_eps,min_elements):
+    clusters = []
+    models=[sk.DBSCAN(metric="precomputed",eps=eps,min_samples=min_elements,n_jobs=4)
+                .fit(M) for eps in l_eps]
+
+    model=models[0]
+    core_samples_mask = np.zeros_like(model.labels_, dtype=bool)
+    core_samples_mask[model.core_sample_indices_] = True
+
+    n_clusters_ = len(set(model.labels_)) - (1 if -1 in model.labels_ else 0)
     for i in range(n_clusters_):
         clusters.append(cluster("cluster"+str(i),[]))
 
     print('Estimated number of clusters: %d' % n_clusters_)
 
     i=0
-    for l in db.labels_:
+    for l in model.labels_:
         if l>=0:
             clusters[l].index.append(i)
         i=i+1
-
 
     return clusters
 
@@ -188,6 +200,10 @@ data = pd.read_excel("donnéesCIPIA.xlsx")
 data["Ref"]=data.index
 data.index=range(len(data))
 
+mes=data.loc[:,"Dim.1":"Dim.10"]
+create_gaussian_mixture_model(mes,params=range(1,40))
+exit(0)
+
 #M0=create_matrix(data,0,"As (ppm)","Se (ppm)")
 M0=create_matrix(data,0,"Dim.1","Dim.10")
 plt.matshow(M0, cmap=plt.cm.Blues)
@@ -195,7 +211,7 @@ plt.show()
 
 G0=nx.from_numpy_matrix(M0)
 #artefact_clusters=create_ncluster(G0,8);
-artefact_clusters=create_clusters_from_dbscan(M0,2,2);
+#artefact_clusters=create_clusters_from_dbscan(M0,np.arange(0.5,4,0.25),2);
 #artefact_clusters=create_clusters_from_girvannewman(G0);
 
 for c in artefact_clusters:c.print(data,"Ref")
