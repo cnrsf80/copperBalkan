@@ -5,14 +5,19 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 import folium
-import plotly.plotly as py
+import matplotlib.colors as colors_lib
 import sklearn.cluster as sk
 import sklearn.decomposition as decomp
 from networkx.algorithms import community
 from mpl_toolkits.mplot3d import Axes3D
+import ezvis3d as v3d
 
 
-colors = ["red", "green", "blue", "yellow", "grey", "purple", "orange","grey","black"]
+
+#colors_name = ["red", "green", "blue", "yellow", "grey", "purple", "orange","grey","black"]
+colors=[]
+for i in range(30):
+    colors.append(i)
 
 class cluster:
 
@@ -40,10 +45,7 @@ class cluster:
 def distance(i,j):
     return np.linalg.norm(i.values - j.values)
 
-
-
 v_seuil=np.vectorize(lambda x,y:1 if x<y else 0)
-
 
 
 def create_matrix(data,seuil,start_col,end_col):
@@ -70,26 +72,39 @@ def create_matrix(data,seuil,start_col,end_col):
     return matrice_ww
 
 
-
-def trace_artefact_3d(data,clusters):
+def trace_artefact_3d(data,clusters,name):
     pca = decomp.pca.PCA(n_components=3)
     pca.fit(data)
     newdata = pca.transform(data)
 
-    lp=[]
+    li_data = []
     for c in clusters:
         for p in c.index:
-            lp.append([newdata[p,0],newdata[p,1],newdata[p,2],dict(size=2, color=c.color)])
+            li_data.append({
+                'x': newdata[p,0],
+                'y': newdata[p,1],
+                'z': newdata[p,2],
+                'style': c.color
+            })
 
+    df_data = pd.DataFrame(li_data)
 
+    g = v3d.Vis3d()
+    g.width = '1200px'
+    g.height = '800px'
+    g.style = 'dot-color'
+    g.showPerspective = True
+    g.showGrid = True
+    g.keepAspectRatio = True
+    g.verticalRatio = 1.0
 
+    g.cameraPosition = {'horizontal': -0.54,
+                        'vertical': 0.5,
+                        'distance': 2
+                        }
 
-    fig = plt.figure(1, figsize=(4, 3),dpi=300)
-    plt.clf()
-    ax = Axes3D(fig, rect=[0, 0, .95, 1], elev=48, azim=134)
-
-
-    plt.show()
+    g.plot(df_data)
+    g.html(df_data,save=True,save_name=name,dated=False)
 
 
 def trace_artefact(G,clusters,data,label_col=""):
@@ -177,7 +192,7 @@ def create_clusters_from_girvannewman(G):
 
 
 #http://scikit-learn.org/stable/modules/generated/sklearn.cluster.dbscan.html#sklearn.cluster.dbscan
-def create_clusters_from_dbscan(M,l_eps,min_elements):
+def create_clusters_from_dbscan(M,l_eps,min_elements=1):
     clusters = []
     models=[sk.DBSCAN(metric="precomputed",eps=eps,min_samples=min_elements,n_jobs=4)
                 .fit(M) for eps in l_eps]
@@ -187,7 +202,8 @@ def create_clusters_from_dbscan(M,l_eps,min_elements):
     core_samples_mask[model.core_sample_indices_] = True
 
     n_clusters_ = len(set(model.labels_)) - (1 if -1 in model.labels_ else 0)
-    for i in range(n_clusters_):clusters.append(cluster("cluster"+str(i),[],colors[i]))
+    for i in range(n_clusters_):
+        clusters.append(cluster("cluster"+str(i),[],colors[i]))
 
     print('Estimated number of clusters: %d' % n_clusters_)
 
@@ -267,16 +283,20 @@ plt.show()
 
 G0=nx.from_numpy_matrix(M0)
 
-artefact_clusters=create_clusters_from_spectralclustering(mes,8,"nearest_neighbors")
+artefact_clusters=create_clusters_from_spectralclustering(mes,12,"nearest_neighbors")
+trace_artefact_3d(mes,artefact_clusters,"spectral")
+
 #artefact_clusters=create_ncluster(G0,8);
-#artefact_clusters=create_clusters_from_dbscan(M0,np.arange(0.5,4,0.25),2);
 #artefact_clusters=create_clusters_from_girvannewman(G0);
 
-for c in artefact_clusters:c.print(data,"Ref")
 #for c in artefact_clusters:c.print(data,"Sample label")
 
 #trace_artefact(G0,artefact_clusters,data,"Ref")
-trace_artefact_3d(mes,artefact_clusters)
+
+artefact_clusters=create_clusters_from_dbscan(M0,np.arange(2,4,0.25),2);
+trace_artefact_3d(mes,artefact_clusters,"dbscan")
+
+for c in artefact_clusters:c.print(data,"Ref")
 
 
 # M=create_site_matrix(data,artefact_clusters)
