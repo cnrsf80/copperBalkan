@@ -18,14 +18,13 @@ class model:
     name=""
     delay:int=0 #delay en secondes
     silhouette_score:int=0
-
+    score:int=0
 
     def __init__(self, data,name_col=0,mesures_col=range(1,5)):
         self.name_col=name_col
         self.mesures_col=mesures_col
         self.clusters=[]
         self.data=data
-
 
     def print_cluster(self):
         for c in self.clusters:
@@ -56,6 +55,8 @@ class model:
         if len(self.clusters)>1:
             self.silhouette_score= metrics.silhouette_score(self.mesures(), self.cluster_toarray())
 
+        self.score=round(self.silhouette_score*10000)
+
 
     def print_perfs(self):
         print("")
@@ -63,6 +64,7 @@ class model:
         print("Nombre de clusters %s" % len(self.clusters))
         print("Delay %s sec" % self.delay)
         if self.silhouette_score>0: print("Silhouette score %s" % self.silhouette_score)
+        print("Score %s" % self.score)
 
 
 #definie un cluster
@@ -180,7 +182,6 @@ def create_ncluster(G:nx.Graph,target=4):
        G = backup_G.subgraph(clusters[k].index)
        clusters.remove(clusters[k])
        for c in create_two_clusters(G):clusters.append(c)
-
 
     return clusters
 

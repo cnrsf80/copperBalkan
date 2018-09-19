@@ -110,6 +110,7 @@ for i in range(3,20):
 
 #mod.trace("spectral_v3")
 
+modeles.sort(key=lambda x:x.score)
 
 for m in modeles:
     m.print_perfs()
