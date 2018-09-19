@@ -7,7 +7,7 @@ from networkx.algorithms import community
 import sklearn.cluster as sk
 
 colors=[]
-for i in range(30):colors.append(i)
+for i in range(200):colors.append(i)
 
 
 
@@ -102,10 +102,10 @@ def create_clusters_from_girvannewman(G):
 
 
 #http://scikit-learn.org/stable/modules/generated/sklearn.cluster.dbscan.html#sklearn.cluster.dbscan
-def create_clusters_from_dbscan(mod:model,M,eps,min_elements=1):
+def create_clusters_from_dbscan(mod:model,eps,min_elements=1):
     mod.name="dbscan"
 
-    model:sk.DBSCAN=sk.DBSCAN(metric="precomputed",eps=eps,min_samples=min_elements,n_jobs=4).fit(M)
+    model:sk.DBSCAN=sk.DBSCAN(eps=eps,min_samples=min_elements,n_jobs=4).fit(mod.mesures())
 
     core_samples_mask = np.zeros_like(model.labels_, dtype=bool)
     core_samples_mask[model.core_sample_indices_] = True
