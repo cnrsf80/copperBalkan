@@ -95,7 +95,7 @@ data.index=range(len(data))
 modeles=[]
 
 
-for i in np.arange(1,5,0.25):
+for i in np.arange(3,5,0.25):
     mod2=algo.model(data,"Ref",range(0,14))
     mod2= algo.create_clusters_from_dbscan(mod2, i, 2)
     mod2.init_metrics()
@@ -115,6 +115,7 @@ modeles.sort(key=lambda x:x.score)
 for m in modeles:
     m.print_perfs()
 
+modeles[len(modeles)-1].trace("best")
 
 #mod2.trace("dbscan_v3")
 

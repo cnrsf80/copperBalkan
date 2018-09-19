@@ -55,7 +55,7 @@ class model:
         if len(self.clusters)>1:
             self.silhouette_score= metrics.silhouette_score(self.mesures(), self.cluster_toarray())
 
-        self.score=round(self.silhouette_score*10000)
+        self.score=round(self.silhouette_score*10000)+10*len(self.clusters)
 
 
     def print_perfs(self):
