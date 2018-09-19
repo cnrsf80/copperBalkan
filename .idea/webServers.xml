@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="5b479fef-1528-419d-8e59-7a7ee1613d59" name="shifumix.com" url="https://shifumix.com/test/index.html">
+        <fileTransfer host="shifumix.com" port="22" rootFolder="/usr/share/nginx/html" accessType="SFTP">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" shareSSLContext="true" />
+          </advancedOptions>
+          <option name="port" value="22" />
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>
