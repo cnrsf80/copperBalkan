@@ -35,6 +35,11 @@ class model:
     def mesures(self):
         return self.data.iloc[:,self.mesures_col]
 
+    def init_metrics(self,test):
+        self.homogeneity_score=metrics.homogeneity_score(test,self.clusters)
+        self.silhouette_score=metrics.silhouette_score(self.mesures(),self.clusters)
+
+
 
 #definie un cluster
 class cluster:
@@ -97,13 +102,11 @@ def create_clusters_from_girvannewman(G):
 
 
 #http://scikit-learn.org/stable/modules/generated/sklearn.cluster.dbscan.html#sklearn.cluster.dbscan
-def create_clusters_from_dbscan(mod:model,M,l_eps,min_elements=1):
+def create_clusters_from_dbscan(mod:model,M,eps,min_elements=1):
     mod.name="dbscan"
 
-    models=[sk.DBSCAN(metric="precomputed",eps=eps,min_samples=min_elements,n_jobs=4)
-                .fit(M) for eps in l_eps]
+    model:sk.DBSCAN=sk.DBSCAN(metric="precomputed",eps=eps,min_samples=min_elements,n_jobs=4).fit(M)
 
-    model=models[0]
     core_samples_mask = np.zeros_like(model.labels_, dtype=bool)
     core_samples_mask[model.core_sample_indices_] = True
 
@@ -111,13 +114,13 @@ def create_clusters_from_dbscan(mod:model,M,l_eps,min_elements=1):
     for i in range(n_clusters_):
         mod.clusters.append(cluster("cluster"+str(i),[],colors[i]))
 
-    print('Estimated number of clusters: %d' % n_clusters_)
 
     i=0
     for l in model.labels_:
         if l>=0:
             mod.clusters[l].index.append(i)
         i=i+1
+
 
 
 
