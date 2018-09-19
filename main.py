@@ -93,18 +93,27 @@ data.index=range(len(data))
 
 
 modeles=[]
+
+
+for i in np.arange(1,5,0.25):
+    mod2=algo.model(data,"Ref",range(0,14))
+    mod2= algo.create_clusters_from_dbscan(mod2, i, 2)
+    mod2.init_metrics()
+    modeles.append(mod2)
+
+
 for i in range(3,20):
     mod = algo.model(data, "Ref", range(0, 14))
     mod=algo.create_clusters_from_spectralclustering(mod,i,"nearest_neighbors")
-    #mod.init_metrics(test)
+    mod.init_metrics()
     modeles.append(mod)
 
 #mod.trace("spectral_v3")
 
-for i in range(1,6):
-    mod2=algo.model(data,"Ref",range(0,14))
-    mod2= algo.create_clusters_from_dbscan(mod2, i, 2)
-    modeles.append(mod2)
+
+for m in modeles:
+    m.print_perfs()
+
 
 #mod2.trace("dbscan_v3")
 

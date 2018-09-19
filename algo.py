@@ -1,5 +1,6 @@
 import draw
-import metrics
+import time
+import sklearn.metrics as metrics
 import networkx as nx
 import numpy as np
 import pandas as pd
@@ -15,6 +16,9 @@ for i in range(200):colors.append(i)
 class model:
 
     name=""
+    delay:int=0 #delay en secondes
+    silhouette_score:int=0
+
 
     def __init__(self, data,name_col=0,mesures_col=range(1,5)):
         self.name_col=name_col
@@ -27,18 +31,38 @@ class model:
         for c in self.clusters:
             c.print(self.data, self.name_col)
 
+    def start_treatment(self):
+        self.delay=time.time()
+
+    def end_treatment(self):
+        self.delay=round((time.time()-self.delay)*10)/10
+
     def trace(self,filename):
         draw.trace_artefact_3d(self.mesures(), self.clusters, filename)
         draw.trace_artefact_2d(self.mesures(), self.clusters, filename)
         self.print_cluster()
 
+    def cluster_toarray(self):
+        rc:np.ndarray=[0]*len(self.data)
+        for k in range(len(self.clusters)):
+            for i in self.clusters[k].index:
+                rc[i]=k
+        return rc
+
     def mesures(self):
         return self.data.iloc[:,self.mesures_col]
 
-    def init_metrics(self,test):
-        self.homogeneity_score=metrics.homogeneity_score(test,self.clusters)
-        self.silhouette_score=metrics.silhouette_score(self.mesures(),self.clusters)
+    def init_metrics(self,test=None):
+        if len(self.clusters)>1:
+            self.silhouette_score= metrics.silhouette_score(self.mesures(), self.cluster_toarray())
 
+
+    def print_perfs(self):
+        print("")
+        print("Name %s" % self.name)
+        print("Nombre de clusters %s" % len(self.clusters))
+        print("Delay %s sec" % self.delay)
+        if self.silhouette_score>0: print("Silhouette score %s" % self.silhouette_score)
 
 
 #definie un cluster
@@ -69,7 +93,9 @@ def create_clusters_from_spectralclustering(model:model,n_clusters:np.int,method
     model.name="spectralclustering"
 
     mes=model.mesures()
+    model.start_treatment()
     comp = sk.SpectralClustering(n_clusters=n_clusters,affinity=method).fit(mes)
+    model.end_treatment()
 
     for i in range(n_clusters): model.clusters.append(cluster("cluster" + str(i), [],colors[i]))
 
@@ -105,7 +131,9 @@ def create_clusters_from_girvannewman(G):
 def create_clusters_from_dbscan(mod:model,eps,min_elements=1):
     mod.name="dbscan"
 
+    mod.start_treatment()
     model:sk.DBSCAN=sk.DBSCAN(eps=eps,min_samples=min_elements,n_jobs=4).fit(mod.mesures())
+    mod.end_treatment()
 
     core_samples_mask = np.zeros_like(model.labels_, dtype=bool)
     core_samples_mask[model.core_sample_indices_] = True
@@ -114,15 +142,10 @@ def create_clusters_from_dbscan(mod:model,eps,min_elements=1):
     for i in range(n_clusters_):
         mod.clusters.append(cluster("cluster"+str(i),[],colors[i]))
 
-
     i=0
     for l in model.labels_:
-        if l>=0:
-            mod.clusters[l].index.append(i)
+        if l>=0:mod.clusters[l].index.append(i)
         i=i+1
-
-
-
 
     return mod
 
