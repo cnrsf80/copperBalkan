@@ -1,3 +1,5 @@
+from sklearn.cluster import estimate_bandwidth, MeanShift
+
 import draw
 import time
 import sklearn.metrics as metrics
@@ -57,6 +59,17 @@ class model:
 
         self.score=round(self.silhouette_score*10000)+10*len(self.clusters)
 
+    def clusters_from_labels(self,labels):
+        #n_clusters_ = len(set(model.labels_)) - (1 if -1 in model.labels_ else 0)
+        n_clusters_=max(labels)+1
+        for i in range(n_clusters_):
+            self.clusters.append(cluster("cluster" + str(i), [], colors[i]))
+
+        i = 0
+        for l in labels:
+            if l >= 0: self.clusters[l].index.append(i)
+            i = i + 1
+
 
     def print_perfs(self):
         print("")
@@ -92,7 +105,7 @@ class cluster:
 
 
 def create_clusters_from_spectralclustering(model:model,n_clusters:np.int,method="precomputed"):
-    model.name="spectralclustering"
+    model.name="spectralclustering avec n_cluster="+str(n_clusters)
 
     mes=model.mesures()
     model.start_treatment()
@@ -130,24 +143,29 @@ def create_clusters_from_girvannewman(G):
 
 
 #http://scikit-learn.org/stable/modules/generated/sklearn.cluster.dbscan.html#sklearn.cluster.dbscan
-def create_clusters_from_dbscan(mod:model,eps,min_elements=1):
-    mod.name="dbscan"
+def create_clusters_from_dbscan(mod:model,eps,min_elements,iter=100):
+    mod.name="dbscan avec eps="+str(eps)+" et min_elements="+str(min_elements)
 
     mod.start_treatment()
-    model:sk.DBSCAN=sk.DBSCAN(eps=eps,min_samples=min_elements,n_jobs=4).fit(mod.mesures())
+    for i in range(iter):
+        model:sk.DBSCAN=sk.DBSCAN(eps=eps,min_samples=min_elements,n_jobs=4).fit(mod.mesures())
+
     mod.end_treatment()
 
     core_samples_mask = np.zeros_like(model.labels_, dtype=bool)
     core_samples_mask[model.core_sample_indices_] = True
 
-    n_clusters_ = len(set(model.labels_)) - (1 if -1 in model.labels_ else 0)
-    for i in range(n_clusters_):
-        mod.clusters.append(cluster("cluster"+str(i),[],colors[i]))
+    mod.clusters_from_labels(model.labels_)
+    return mod
 
-    i=0
-    for l in model.labels_:
-        if l>=0:mod.clusters[l].index.append(i)
-        i=i+1
+def create_model_from_meanshift(mod:model,quantile=0.2):
+    mod.name = "meanshift avec quantile a "+str(quantile)
+
+    mod.start_treatment()
+    bandwidth = estimate_bandwidth(mod.mesures(), quantile=0.2, n_samples=round(len(mod.mesures())/20))
+    ms = MeanShift(bandwidth=bandwidth, bin_seeding=True).fit(mod.mesures())
+    mod.end_treatment()
+    mod.clusters_from_labels(ms.labels_)
 
     return mod
 
@@ -192,3 +210,5 @@ def create_clusters_from_asyncfluid(G,n_community):
     for c in coms:
         partition.append(cluster("asyncfluid",c))
     return partition
+
+#https://people.eecs.berkeley.edu/~jordan/sail/readings/luxburg_ftml.pdf
