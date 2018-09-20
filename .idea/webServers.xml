@@ -3,7 +3,15 @@
   <component name="WebServers">
     <option name="servers">
       <webServer id="5b479fef-1528-419d-8e59-7a7ee1613d59" name="shifumix.com" url="https://shifumix.com/test/index.html">
-        <fileTransfer host="shifumix.com" port="22" rootFolder="/usr/share/nginx/html" accessType="SFTP">
+        <fileTransfer host="45.32.173.0" port="22" rootFolder="/usr/share/nginx/html" accessType="SFTP">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" shareSSLContext="true" />
+          </advancedOptions>
+          <option name="port" value="22" />
+        </fileTransfer>
+      </webServer>
+      <webServer id="6c78cc56-f1d9-4d86-8116-9f05ee78a4c6" name="OrangePi" url="http://78.192.162.111">
+        <fileTransfer host="78.192.162.111" port="22" accessType="SFTP">
           <advancedOptions>
             <advancedOptions dataProtectionLevel="Private" shareSSLContext="true" />
           </advancedOptions>

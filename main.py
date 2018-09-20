@@ -103,7 +103,7 @@ for min_elements in range(5):
         modeles.append(mod)
 
 
-for i in np.arange(0.1,5,0.5):
+for i in np.arange(0.1,10,0.5):
     mod=algo.model(data,"Ref",range(0,14))
     mod= algo.create_model_from_meanshift(mod, i)
     mod.init_metrics()
