@@ -63,6 +63,15 @@ def create_site_matrix(data,artefact_clusters):
     return M
 
 
+def create_html(name="index.html",code="",url_base=""):
+    file=open("./saved/"+name+"html","w")
+    file.write(code)
+    file.close()
+    if len(url_base)>0:
+        return url_base+"/"+name+".html"
+    else:
+        return ""
+
 
 
 def draw_site_onmap(mymap:folium.Map, G, sites_clusters, sites:pd.DataFrame ,file):
@@ -109,23 +118,24 @@ for i in np.arange(0.1,10,0.5):
     mod.init_metrics()
     modeles.append(mod)
 
+for n_neighbors in range(5,15):
+    for i in range(6,20):
+        mod = algo.model(data, "Ref", range(0, 14))
+        mod=algo.create_clusters_from_spectralclustering(mod,i,n_neighbors,"nearest_neighbors")
+        mod.init_metrics()
+        modeles.append(mod)
 
-for i in range(3,20):
-    mod = algo.model(data, "Ref", range(0, 14))
-    mod=algo.create_clusters_from_spectralclustering(mod,i,"nearest_neighbors")
-    mod.init_metrics()
-    modeles.append(mod)
-
-
-#mod.trace("spectral_v3")
 
 print(str(round(len(modeles)))+" models calculés")
 modeles.sort(key=lambda x:x.score)
 
-for m in modeles:
-    m.print_perfs()
+code=""
+for i in range(0,len(modeles)):
+    code=code+"<br>"+modeles[i].print_perfs()
+    code=code+modeles[i].trace("best "+str(len(modeles)-i),"Ref","http://shifumix.com/test")
 
-modeles[len(modeles)-1].trace("best")
+print(create_html("index",code,"http://shifumix.com/test"))
+
 
 #mod2.trace("dbscan_v3")
 

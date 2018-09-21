@@ -21,15 +21,19 @@ class model:
     silhouette_score:int=0
     score:int=0
 
+
     def __init__(self, data,name_col=0,mesures_col=range(1,5)):
         self.name_col=name_col
         self.mesures_col=mesures_col
         self.clusters=[]
         self.data=data
 
+
     def print_cluster(self):
+        s=""
         for c in self.clusters:
-            c.print(self.data, self.name_col)
+            s=s+c.print(self.data, self.name_col)+"\n"
+        return s
 
     def start_treatment(self):
         self.delay=time.time()
@@ -37,10 +41,11 @@ class model:
     def end_treatment(self):
         self.delay=round((time.time()-self.delay)*10)/10
 
-    def trace(self,filename):
-        draw.trace_artefact_3d(self.mesures(), self.clusters, filename)
-        draw.trace_artefact_2d(self.mesures(), self.clusters, filename)
-        self.print_cluster()
+    def trace(self,filename,label_col_name="",url_base=""):
+        title=self.print_perfs()+"\n"+self.print_cluster()
+        s=(url_base+"/"+draw.trace_artefact_3d(self.mesures(), self.clusters, filename,label_col_name,title))+"\n"
+        s=s+(url_base + "/" + draw.trace_artefact_2d(self.mesures(), self.clusters, filename,label_col_name))+"\n"
+        return s+"\n"+self.print_cluster()
 
     def cluster_toarray(self):
         rc:np.ndarray=[0]*len(self.data)
@@ -66,17 +71,20 @@ class model:
 
         i = 0
         for l in labels:
-            if l >= 0: self.clusters[l].index.append(i)
+            if l >= 0:
+                self.clusters[l].add_index(i,self.data,self.name_col)
             i = i + 1
 
 
     def print_perfs(self):
-        print("")
-        print("Name %s" % self.name)
-        print("Nombre de clusters %s" % len(self.clusters))
-        print("Delay %s sec" % self.delay)
-        if self.silhouette_score>0: print("Silhouette score %s" % self.silhouette_score)
-        print("Score %s" % self.score)
+        s=("Name %s" % self.name)+"\n"
+        s=s+("Nombre de clusters %s" % len(self.clusters))+"\n"
+        s = s +("Delay %s sec" % self.delay)+"\n"
+        if self.silhouette_score>0:
+            s=s+("Silhouette score %s" % self.silhouette_score)+"\n"
+
+        s = s +("Score %s" % self.score)+"\n"
+        return s
 
 
 #definie un cluster
@@ -95,27 +103,26 @@ class cluster:
 
     def add_index(self,index,data=None,label_col=""):
         self.index.append(index)
-        if data!=None:
-            self.labels.append(data[label_col][index])
+        if data is not None:
+            col=data[label_col]
+            self.labels.append(col[index])
 
     def print(self,data,label_col=""):
-        print("\nCluster:"+self.name)
-        print(" + ".join(data[label_col][self.index]))
+        s=("Cluster:"+self.name+"\n")
+        s=s+(" + ".join(data[label_col][self.index]))
+        return s+"\n"
 
 
 
-def create_clusters_from_spectralclustering(model:model,n_clusters:np.int,method="precomputed"):
-    model.name="spectralclustering avec n_cluster="+str(n_clusters)
+def create_clusters_from_spectralclustering(model:model,n_clusters:np.int,n_neighbors=10,method="precomputed"):
+    model.name="spectralclustering avec n_cluster="+str(n_clusters)+" et n_neighbors="+n_neighbors
 
     mes=model.mesures()
     model.start_treatment()
-    comp = sk.SpectralClustering(n_clusters=n_clusters,affinity=method).fit(mes)
+    comp = sk.SpectralClustering(n_clusters=n_clusters,affinity=method,n_neighbors=n_neighbors).fit(mes)
     model.end_treatment()
 
-    for i in range(n_clusters): model.clusters.append(cluster("cluster" + str(i), [],colors[i]))
-
-    for i in range(len(comp.labels_)):
-        model.clusters[comp.labels_[i]].index.append(i)
+    model.clusters_from_labels(comp.labels_)
 
     return model
 
@@ -157,6 +164,8 @@ def create_clusters_from_dbscan(mod:model,eps,min_elements,iter=100):
 
     mod.clusters_from_labels(model.labels_)
     return mod
+
+
 
 def create_model_from_meanshift(mod:model,quantile=0.2):
     mod.name = "meanshift avec quantile a "+str(quantile)
