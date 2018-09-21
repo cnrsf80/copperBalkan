@@ -43,8 +43,8 @@ class model:
 
     def trace(self,filename,label_col_name="",url_base=""):
         title=self.print_perfs()+"\n"+self.print_cluster()
-        s=(url_base+"/"+draw.trace_artefact_3d(self.mesures(), self.clusters, filename,label_col_name,title))+"\n"
-        s=s+(url_base + "/" + draw.trace_artefact_2d(self.mesures(), self.clusters, filename,label_col_name))+"\n"
+        s=("<a href='"+url_base+"/"+draw.trace_artefact_3d(self.mesures(), self.clusters, filename,label_col_name,title))+"'>"+filename+"</a>\n"
+        s=s+("<a href='"+url_base + "/" + draw.trace_artefact_2d(self.mesures(), self.clusters, filename,label_col_name))+"'>"+filename+"</a>\n"
         return s+"\n"+self.print_cluster()
 
     def cluster_toarray(self):
@@ -115,7 +115,7 @@ class cluster:
 
 
 def create_clusters_from_spectralclustering(model:model,n_clusters:np.int,n_neighbors=10,method="precomputed"):
-    model.name="spectralclustering avec n_cluster="+str(n_clusters)+" et n_neighbors="+n_neighbors
+    model.name="spectralclustering avec n_cluster="+str(n_clusters)+" et n_neighbors="+str(n_neighbors)
 
     mes=model.mesures()
     model.start_treatment()
@@ -167,12 +167,12 @@ def create_clusters_from_dbscan(mod:model,eps,min_elements,iter=100):
 
 
 
-def create_model_from_meanshift(mod:model,quantile=0.2):
-    mod.name = "meanshift avec quantile a "+str(quantile)
+def create_model_from_meanshift(mod:model,quantile=0.2,min_bin_freq=1):
+    mod.name = "meanshift avec quantile a "+str(quantile)+" & min_bin_freq="+str(min_bin_freq)
 
     mod.start_treatment()
     bandwidth = estimate_bandwidth(mod.mesures(), quantile=0.2, n_samples=round(len(mod.mesures())/20))
-    ms = MeanShift(bandwidth=bandwidth, bin_seeding=True).fit(mod.mesures())
+    ms = MeanShift(bandwidth=bandwidth, bin_seeding=True,min_bin_freq=min_bin_freq).fit(mod.mesures())
     mod.end_treatment()
     mod.clusters_from_labels(ms.labels_)
 

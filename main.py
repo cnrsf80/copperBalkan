@@ -100,39 +100,42 @@ data.index=range(len(data))
 #G0=nx.from_numpy_matrix(M0)
 
 
-
 modeles=[]
 
-
+print("dbscan")
 for min_elements in range(5):
+    print(min_elements)
     for i in np.arange(3,5,0.25):
         mod=algo.model(data,"Ref",range(0,14))
         mod= algo.create_clusters_from_dbscan(mod, i, min_elements,1)
         mod.init_metrics()
         modeles.append(mod)
 
+print("menshift")
+for min_bin_freq in range(1,3):
+    print(min_bin_freq)
+    for i in np.arange(0.1,8,0.5):
+        mod=algo.model(data,"Ref",range(0,14))
+        mod= algo.create_model_from_meanshift(mod, i,min_bin_freq)
+        mod.init_metrics()
+        modeles.append(mod)
 
-for i in np.arange(0.1,10,0.5):
-    mod=algo.model(data,"Ref",range(0,14))
-    mod= algo.create_model_from_meanshift(mod, i)
-    mod.init_metrics()
-    modeles.append(mod)
-
+print("spectral")
 for n_neighbors in range(5,15):
+    print(n_neighbors)
     for i in range(6,20):
         mod = algo.model(data, "Ref", range(0, 14))
         mod=algo.create_clusters_from_spectralclustering(mod,i,n_neighbors,"nearest_neighbors")
         mod.init_metrics()
         modeles.append(mod)
 
-
 print(str(round(len(modeles)))+" models calculés")
-modeles.sort(key=lambda x:x.score)
+modeles.sort(key=lambda x:x.score,reverse=True)
 
 code=""
 for i in range(0,len(modeles)):
     code=code+"<br>"+modeles[i].print_perfs()
-    code=code+modeles[i].trace("best "+str(len(modeles)-i),"Ref","http://shifumix.com/test")
+    code=code+modeles[i].trace("best"+str(i),"Ref","http://shifumix.com/test")
 
 print(create_html("index",code,"http://shifumix.com/test"))
 
