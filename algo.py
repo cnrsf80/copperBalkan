@@ -16,7 +16,6 @@ for i in range(200):colors.append(i)
 
 #Represente un model après entrainement
 class model:
-
     name=""
     delay:int=0 #delay en secondes
     silhouette_score:int=0
@@ -86,6 +85,7 @@ class cluster:
         self.index = index
         self.name = name
         self.color=color
+        self.labels=[]
 
     def contain(self,i):
         for n in self.index:
@@ -93,14 +93,14 @@ class cluster:
                 return True
         return False
 
-    def add_index(self,index):
+    def add_index(self,index,data=None,label_col=""):
         self.index.append(index)
+        if data!=None:
+            self.labels.append(data[label_col][index])
 
     def print(self,data,label_col=""):
         print("\nCluster:"+self.name)
         print(" + ".join(data[label_col][self.index]))
-
-
 
 
 

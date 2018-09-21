@@ -1,8 +1,5 @@
-import matplotlib.colors as colors_lib
 import sklearn.decomposition as decomp
-from mpl_toolkits.mplot3d import Axes3D
 import ezvis3d as v3d
-import numpy as np
 import pandas as pd
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -24,7 +21,10 @@ def trace_artefact_2d(data, clusters, name):
     plt.savefig("./saved/"+name+".png")
 
 
-def trace_artefact_3d(data, clusters, name):
+
+
+
+def trace_artefact_3d(data, clusters, name,label_col=-1):
     pca = decomp.pca.PCA(n_components=3)
     pca.fit(data)
     newdata = pca.transform(data)
@@ -32,11 +32,17 @@ def trace_artefact_3d(data, clusters, name):
     li_data = []
     for c in clusters:
         for p in c.index:
+            if label_col==-1:
+                label=""
+            else:
+                label=data[p,label_col]
+
             li_data.append({
                 'x': newdata[p, 0],
                 'y': newdata[p, 1],
                 'z': newdata[p, 2],
-                'style': c.color
+                'style': c.color,
+                'filter':label
             })
 
     df_data = pd.DataFrame(li_data)
@@ -45,6 +51,7 @@ def trace_artefact_3d(data, clusters, name):
     g.width = '1200px'
     g.height = '800px'
     g.style = 'dot-color'
+    g.tooltip="""function (point) { return 'value: <b>' + point.filter + '</b>'; }"""
     g.showPerspective = True
     g.showGrid = True
     g.keepAspectRatio = True
