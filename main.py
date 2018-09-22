@@ -12,34 +12,25 @@ import algo
 from tools import create_html
 
 
-def distance(i,j):
-    return np.linalg.norm(i.values - j.values)
 
 v_seuil=np.vectorize(lambda x,y:1 if x<y else 0)
 
 
-def create_matrix(data,seuil,start_col,end_col):
-    if os.path.isfile("adjacence_artefact.csv") and len(data)>149:
-        matrice=np.asmatrix(np.loadtxt("adjacence_artefact.csv",delimiter=" "))
-    else:
-        composition = data.loc[:, start_col:end_col]
-        matrice = np.asmatrix(np.zeros((len(data),len(data))))
-
-        for i in composition.index:
-            for j in composition.index:
-                if(matrice[i,j]==0 and i!=j):
-                    d=distance(composition.ix[i],composition.ix[j])
-                    matrice[i,j]=d
-                    matrice[j,i]=d
-
-        np.savetxt("adjacence_artefact.csv",matrice)
-
-    if(seuil==0):
-        matrice_ww=matrice
-    else:
-        matrice_ww=v_seuil(matrice,seuil)
-
-    return matrice_ww
+# def create_matrix(data,seuil,start_col,end_col):
+#     if os.path.isfile("adjacence_artefact.csv") and len(data)>149:
+#         matrice=np.asmatrix(np.loadtxt("adjacence_artefact.csv",delimiter=" "))
+#     else:
+#         composition = data.loc[:, start_col:end_col]
+#         matrice = np.asmatrix(np.zeros((len(data),len(data))))
+#
+#         np.savetxt("adjacence_artefact.csv",matrice)
+#
+#     if(seuil==0):
+#         matrice_ww=matrice
+#     else:
+#         matrice_ww=v_seuil(matrice,seuil)
+#
+#     return matrice_ww
 
 def create_sites_df(data):
     sites = data.loc[:, "Site":"Type of site/context"]
@@ -89,6 +80,15 @@ data.index=range(len(data))
 
 
 modeles=[]
+
+
+def distance(i,j):
+    return np.linalg.norm(i.values - j.values)
+
+mod=algo.model(data,"Ref",range(0,14))
+mod.initDistance(distance)
+
+
 
 print("Arbre")
 for n_cluster in range(2,40):

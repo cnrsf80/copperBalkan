@@ -17,6 +17,7 @@ for i in range(200):colors.append(i)
 
 
 
+
 #Represente un model après entrainement
 class model:
     name=""
@@ -24,12 +25,22 @@ class model:
     silhouette_score:int=0
     score:int=0
 
-
     def __init__(self, data,name_col=0,mesures_col=range(1,5)):
         self.name_col=name_col
         self.mesures_col=mesures_col
         self.clusters=[]
         self.data=data
+
+    def initDistance(self,func_distance):
+        composition=self.mesures()
+        self.distances = np.asmatrix(np.zeros((len(composition.index), len(composition.index))))
+        for i in composition.index:
+            for j in composition.index:
+                if(self.distances [i,j]==0 and i!=j):
+                    d=func_distance(composition.ix[i],composition.ix[j])
+                    self.distances[i,j]=d
+                    self.distances[j,i]=d
+
 
     def print_cluster(self):
         s=""
@@ -169,11 +180,12 @@ def create_clusters_from_dbscan(mod:model,eps,min_elements,iter=100):
     return mod
 
 
+
 def create_clusters_from_agglomerative(mod, n_cluster=10,affinity="euclidean"):
     mod.name = "Classification Hierarchique avec ncluster=" + str(n_cluster)
 
     mod.start_treatment()
-    model = sk.AgglomerativeClustering(n_cluster,affinity).fit(mod.mesures())
+    model= sk.AgglomerativeClustering(n_cluster,affinity).fit(mod.mesures())
 
     mod.end_treatment()
 
