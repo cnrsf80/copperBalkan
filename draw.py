@@ -3,7 +3,7 @@ import ezvis3d as v3d
 import pandas as pd
 import networkx as nx
 import matplotlib.pyplot as plt
-
+from matplotlib import colors as mcolors
 
 def trace_artefact_2d(data, clusters, name,col_name=""):
     pca = decomp.pca.PCA(n_components=2)
@@ -11,14 +11,16 @@ def trace_artefact_2d(data, clusters, name,col_name=""):
     newdata = pca.transform(data)
     x=[]
     y=[]
-    colors=[]
-    for c in clusters:
-        x.extend(newdata[c.index,0])
-        y.extend(newdata[c.index,1])
-        colors.extend([c.color]*len(c.index))
 
-    plt.scatter(x, y, c=colors)
-    plt.savefig("./saved/"+name+".png")
+
+    colors = dict(mcolors.BASE_COLORS, **mcolors.CSS4_COLORS)
+    for c in clusters:
+        cv=list(colors.values())
+        plt.scatter(x=newdata[c.index,0],y=newdata[c.index,1],c=cv[c.color],marker=c.marker,label=c.name,alpha=0.3)
+
+    plt.legend(title_fontsize="xx-small", bbox_to_anchor=(0.95, 1), loc=2, borderaxespad=0.)
+    plt.savefig("./saved/"+name+".png",dpi=400)
+    plt.clf()
 
     return name+".png"
 
@@ -70,10 +72,11 @@ def trace_artefact_3d(data, clusters, name,label_col="",footer=""):
     g.keepAspectRatio = True
     g.verticalRatio = 1.0
 
-    g.cameraPosition = {'horizontal': -0.54,
-                        'vertical': 0.5,
-                        'distance': 2
-                        }
+    g.cameraPosition = {
+        'horizontal': -0.54,
+        'vertical': 0.5,
+        'distance': 2
+    }
 
     g.plot(df_data)
     g.html(df_data, save=True, save_name=name, dated=False)

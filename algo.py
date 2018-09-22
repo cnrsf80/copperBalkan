@@ -9,8 +9,11 @@ import pandas as pd
 from networkx.algorithms import community
 import sklearn.cluster as sk
 
+from tools import tirage
+
 colors=[]
 for i in range(200):colors.append(i)
+
 
 
 
@@ -28,7 +31,6 @@ class model:
         self.clusters=[]
         self.data=data
 
-
     def print_cluster(self):
         s=""
         for c in self.clusters:
@@ -43,9 +45,9 @@ class model:
 
     def trace(self,filename,label_col_name="",url_base=""):
         title=self.print_perfs()+"\n"+self.print_cluster()
-        s=("<a href='"+url_base+"/"+draw.trace_artefact_3d(self.mesures(), self.clusters, filename,label_col_name,title))+"'>"+filename+"</a>\n"
-        s=s+("<a href='"+url_base + "/" + draw.trace_artefact_2d(self.mesures(), self.clusters, filename,label_col_name))+"'>"+filename+"</a>\n"
-        return s+"\n"+self.print_cluster()
+        s=("<a href='"+url_base+"/"+draw.trace_artefact_3d(self.mesures(), self.clusters, filename,label_col_name,title))+"'>représentation 3D</a>\n"
+        s=s+("<a href='"+url_base + "/" + draw.trace_artefact_2d(self.mesures(), self.clusters, filename,label_col_name))+"'>représentation 2D</a>\n"
+        return self.print_perfs()+"\n"+s+"\n"
 
     def cluster_toarray(self):
         rc:np.ndarray=[0]*len(self.data)
@@ -61,13 +63,13 @@ class model:
         if len(self.clusters)>1:
             self.silhouette_score= metrics.silhouette_score(self.mesures(), self.cluster_toarray())
 
-        self.score=round(self.silhouette_score*10000)+10*len(self.clusters)
+        self.score=round(self.silhouette_score*20*10)/10
 
     def clusters_from_labels(self,labels):
         #n_clusters_ = len(set(model.labels_)) - (1 if -1 in model.labels_ else 0)
         n_clusters_=max(labels)+1
         for i in range(n_clusters_):
-            self.clusters.append(cluster("cluster" + str(i), [], colors[i]))
+            self.clusters.append(cluster("cl_" + str(i), [], colors[i]))
 
         i = 0
         for l in labels:
@@ -77,9 +79,9 @@ class model:
 
 
     def print_perfs(self):
-        s=("Name %s" % self.name)+"\n"
-        s=s+("Nombre de clusters %s" % len(self.clusters))+"\n"
-        s = s +("Delay %s sec" % self.delay)+"\n"
+        s=("Algorithme : %s" % self.name)+"\n"
+        s=s+("Nombre de clusters : %s" % len(self.clusters))+"\n"
+        s = s +("Delay de traitement : %s sec" % self.delay)+"\n"
         if self.silhouette_score>0:
             s=s+("Silhouette score %s" % self.silhouette_score)+"\n"
 
@@ -94,6 +96,7 @@ class cluster:
         self.name = name
         self.color=color
         self.labels=[]
+        self.marker=tirage(['^','o','v','<','>','x','D','*'])
 
     def contain(self,i):
         for n in self.index:
@@ -165,6 +168,17 @@ def create_clusters_from_dbscan(mod:model,eps,min_elements,iter=100):
     mod.clusters_from_labels(model.labels_)
     return mod
 
+
+def create_clusters_from_agglomerative(mod, n_cluster=10,affinity="euclidean"):
+    mod.name = "Classification Hierarchique avec ncluster=" + str(n_cluster)
+
+    mod.start_treatment()
+    model = sk.AgglomerativeClustering(n_cluster,affinity).fit(mod.mesures())
+
+    mod.end_treatment()
+
+    mod.clusters_from_labels(model.labels_)
+    return mod
 
 
 def create_model_from_meanshift(mod:model,quantile=0.2,min_bin_freq=1):

@@ -1,3 +1,4 @@
+import vispy
 import os.path
 import metrics
 import matplotlib.pyplot as plt
@@ -5,14 +6,12 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 import folium
-from networkx.algorithms import community
-import sklearn.cluster as sk
-
 import algo
-import draw
-
 
 #Definitions
+from tools import create_html
+
+
 def distance(i,j):
     return np.linalg.norm(i.values - j.values)
 
@@ -63,14 +62,6 @@ def create_site_matrix(data,artefact_clusters):
     return M
 
 
-def create_html(name="index.html",code="",url_base=""):
-    file=open("./saved/"+name+"html","w")
-    file.write(code)
-    file.close()
-    if len(url_base)>0:
-        return url_base+"/"+name+".html"
-    else:
-        return ""
 
 
 
@@ -79,9 +70,6 @@ def draw_site_onmap(mymap:folium.Map, G, sites_clusters, sites:pd.DataFrame ,fil
         pos=[site[1]["Geo Latitude"],site[1]["Geo Longitude"]]
         folium.Marker(pos,site["Site"]).add_to(mymap)
 
-
-
-for i in range(5):plt.clf()
 
 #data = pd.read_excel("cnx013_supp_table_s1.xlsx").head(200)
 data = pd.read_excel("donnéesCIPIA.xlsx")
@@ -102,6 +90,13 @@ data.index=range(len(data))
 
 modeles=[]
 
+print("Arbre")
+for n_cluster in range(2,40):
+    mod=algo.model(data,"Ref",range(0,14))
+    mod= algo.create_clusters_from_agglomerative(mod, n_cluster)
+    mod.init_metrics()
+    modeles.append(mod)
+
 print("dbscan")
 for min_elements in range(5):
     print(min_elements)
@@ -111,10 +106,11 @@ for min_elements in range(5):
         mod.init_metrics()
         modeles.append(mod)
 
+
 print("menshift")
-for min_bin_freq in range(1,3):
+for min_bin_freq in range(1,1):
     print(min_bin_freq)
-    for i in np.arange(0.1,8,0.5):
+    for i in np.arange(0.1,1,0.1):
         mod=algo.model(data,"Ref",range(0,14))
         mod= algo.create_model_from_meanshift(mod, i,min_bin_freq)
         mod.init_metrics()
@@ -134,8 +130,12 @@ modeles.sort(key=lambda x:x.score,reverse=True)
 
 code=""
 for i in range(0,len(modeles)):
-    code=code+"<br>"+modeles[i].print_perfs()
-    code=code+modeles[i].trace("best"+str(i),"Ref","http://shifumix.com/test")
+    print("Trace du modele "+str(i))
+    code=code+"\nPosition "+str(i+1)+"<br>"
+    if i<50:
+        code=code+modeles[i].trace("best"+str(i),"Ref","http://shifumix.com/test")
+    else:
+        code=code+modeles[i].print_perfs()
 
 print(create_html("index",code,"http://shifumix.com/test"))
 

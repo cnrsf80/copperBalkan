@@ -2,16 +2,16 @@
 <project version="4">
   <component name="WebServers">
     <option name="servers">
-      <webServer id="5b479fef-1528-419d-8e59-7a7ee1613d59" name="shifumix.com" url="https://shifumix.com/test/index.html">
-        <fileTransfer host="45.32.173.0" port="22" rootFolder="/usr/share/nginx/html" accessType="SFTP">
+      <webServer id="6c78cc56-f1d9-4d86-8116-9f05ee78a4c6" name="OrangePi" url="http://78.192.162.111">
+        <fileTransfer host="78.192.162.111" port="22" accessType="SFTP">
           <advancedOptions>
             <advancedOptions dataProtectionLevel="Private" shareSSLContext="true" />
           </advancedOptions>
           <option name="port" value="22" />
         </fileTransfer>
       </webServer>
-      <webServer id="6c78cc56-f1d9-4d86-8116-9f05ee78a4c6" name="OrangePi" url="http://78.192.162.111">
-        <fileTransfer host="78.192.162.111" port="22" accessType="SFTP">
+      <webServer id="86de8ed4-d443-492e-8b0c-11915d0bae02" name="home" url="">
+        <fileTransfer host="192.168.1.83" port="22" rootFolder="/var/www/html" accessType="SFTP">
           <advancedOptions>
             <advancedOptions dataProtectionLevel="Private" shareSSLContext="true" />
           </advancedOptions>
