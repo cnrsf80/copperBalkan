@@ -12,7 +12,7 @@
       <paths name="home">
         <serverdata>
           <mappings>
-            <mapping local="$PROJECT_DIR$" web="/" />
+            <mapping deploy="/cnrs" local="$PROJECT_DIR$/saved" web="/" />
           </mappings>
         </serverdata>
       </paths>

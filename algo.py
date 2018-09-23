@@ -1,11 +1,12 @@
 from sklearn.cluster import estimate_bandwidth, MeanShift
 
+import os
 import draw
 import time
 import sklearn.metrics as metrics
 import networkx as nx
 import numpy as np
-import pandas as pd
+
 from networkx.algorithms import community
 import sklearn.cluster as sk
 
@@ -31,15 +32,29 @@ class model:
         self.clusters=[]
         self.data=data
 
-    def initDistance(self,func_distance):
+    def init_distances(self,func_distance,force=False):
+        print("Calcul de la matrice de distance")
+        size=len(self.mesures())
         composition=self.mesures()
-        self.distances = np.asmatrix(np.zeros((len(composition.index), len(composition.index))))
-        for i in composition.index:
-            for j in composition.index:
-                if(self.distances [i,j]==0 and i!=j):
-                    d=func_distance(composition.ix[i],composition.ix[j])
-                    self.distances[i,j]=d
-                    self.distances[j,i]=d
+
+        namefile="./saved/matrix_distance_"+self.name
+        if os.path.isfile(namefile) and force==False:
+            self.distances=np.load(namefile)
+        else:
+            self.distances = np.asmatrix(np.zeros((len(composition.index), len(composition.index))))
+            for i in range(size):
+                print(size-i)
+                for j in range(size):
+                    if(self.distances[i,j]==0 and i!=j):
+                        name_i=self.data[self.name_col][i]
+                        name_j=self.data[self.name_col][j]
+                        vecteur_i=composition.iloc[i].values
+                        vecteur_j=composition.iloc[j].values
+                        d=func_distance(vecteur_i,vecteur_j,name_i,name_j)
+                        self.distances[i,j]=d
+                        self.distances[j,i]=d
+
+            np.save(namefile,self.distances)
 
 
     def print_cluster(self):
@@ -57,7 +72,7 @@ class model:
     def trace(self,filename,label_col_name="",url_base=""):
         title=self.print_perfs()+"\n"+self.print_cluster()
         s=("<a href='"+url_base+"/"+draw.trace_artefact_3d(self.mesures(), self.clusters, filename,label_col_name,title))+"'>représentation 3D</a>\n"
-        s=s+("<a href='"+url_base + "/" + draw.trace_artefact_2d(self.mesures(), self.clusters, filename,label_col_name))+"'>représentation 2D</a>\n"
+        #s=s+("<a href='"+url_base + "/" + draw.trace_artefact_2d(self.mesures(), self.clusters, filename,label_col_name))+"'>représentation 2D</a>\n"
         return self.print_perfs()+"\n"+s+"\n"
 
     def cluster_toarray(self):
@@ -70,14 +85,15 @@ class model:
     def mesures(self):
         return self.data.iloc[:,self.mesures_col]
 
+
     def init_metrics(self,test=None):
         if len(self.clusters)>1:
             self.silhouette_score= metrics.silhouette_score(self.mesures(), self.cluster_toarray())
-
-        self.score=round(self.silhouette_score*20*10)/10
+            self.score=round(self.silhouette_score*20*10)/10
+        else:
+            self.score=0
 
     def clusters_from_labels(self,labels):
-        #n_clusters_ = len(set(model.labels_)) - (1 if -1 in model.labels_ else 0)
         n_clusters_=max(labels)+1
         for i in range(n_clusters_):
             self.clusters.append(cluster("cl_" + str(i), [], colors[i]))
@@ -131,9 +147,11 @@ class cluster:
 def create_clusters_from_spectralclustering(model:model,n_clusters:np.int,n_neighbors=10,method="precomputed"):
     model.name="spectralclustering avec n_cluster="+str(n_clusters)+" et n_neighbors="+str(n_neighbors)
 
-    mes=model.mesures()
     model.start_treatment()
-    comp = sk.SpectralClustering(n_clusters=n_clusters,affinity=method,n_neighbors=n_neighbors).fit(mes)
+    if method=="precomputed":
+        comp = sk.SpectralClustering(n_clusters=n_clusters,affinity=method,n_neighbors=n_neighbors).fit(model.distances)
+    else:
+        comp = sk.SpectralClustering(n_clusters=n_clusters, affinity=method, n_neighbors=n_neighbors).fit(model.mesures())
     model.end_treatment()
 
     model.clusters_from_labels(comp.labels_)
@@ -164,17 +182,16 @@ def create_clusters_from_girvannewman(G):
 
 
 #http://scikit-learn.org/stable/modules/generated/sklearn.cluster.dbscan.html#sklearn.cluster.dbscan
-def create_clusters_from_dbscan(mod:model,eps,min_elements,iter=100):
+def create_clusters_from_dbscan(mod:model,eps,min_elements,iter=100,metric="euclidean"):
     mod.name="dbscan avec eps="+str(eps)+" et min_elements="+str(min_elements)
 
     mod.start_treatment()
-    for i in range(iter):
-        model:sk.DBSCAN=sk.DBSCAN(eps=eps,min_samples=min_elements,n_jobs=4).fit(mod.mesures())
+    if metric=="precomputed":
+        model:sk.DBSCAN=sk.DBSCAN(eps=eps,min_samples=min_elements,n_jobs=4,metric=metric).fit(mod.distances)
+    else:
+        model: sk.DBSCAN = sk.DBSCAN(eps=eps, min_samples=min_elements, n_jobs=4, metric=metric).fit(mod.mesures())
 
     mod.end_treatment()
-
-    core_samples_mask = np.zeros_like(model.labels_, dtype=bool)
-    core_samples_mask[model.core_sample_indices_] = True
 
     mod.clusters_from_labels(model.labels_)
     return mod
@@ -185,7 +202,10 @@ def create_clusters_from_agglomerative(mod, n_cluster=10,affinity="euclidean"):
     mod.name = "Classification Hierarchique avec ncluster=" + str(n_cluster)
 
     mod.start_treatment()
-    model= sk.AgglomerativeClustering(n_cluster,affinity).fit(mod.mesures())
+    if affinity=="precomputed":
+        model = sk.AgglomerativeClustering(n_cluster, affinity,linkage="complete").fit(mod.distances)
+    else:
+        model= sk.AgglomerativeClustering(n_cluster,affinity).fit(mod.mesures())
 
     mod.end_treatment()
 
@@ -193,12 +213,12 @@ def create_clusters_from_agglomerative(mod, n_cluster=10,affinity="euclidean"):
     return mod
 
 
-def create_model_from_meanshift(mod:model,quantile=0.2,min_bin_freq=1):
+def create_model_from_meanshift(mod:model,quantile=0.2,min_bin_freq=1,method="euclidean"):
     mod.name = "meanshift avec quantile a "+str(quantile)+" & min_bin_freq="+str(min_bin_freq)
 
     mod.start_treatment()
-    bandwidth = estimate_bandwidth(mod.mesures(), quantile=0.2, n_samples=round(len(mod.mesures())/20))
-    ms = MeanShift(bandwidth=bandwidth, bin_seeding=True,min_bin_freq=min_bin_freq).fit(mod.mesures())
+    bandwidth = estimate_bandwidth(mod.mesures(), quantile=quantile)
+    ms = MeanShift(bandwidth=bandwidth,min_bin_freq=min_bin_freq).fit(mod.mesures())
     mod.end_treatment()
     mod.clusters_from_labels(ms.labels_)
 

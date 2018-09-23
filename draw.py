@@ -38,7 +38,7 @@ def trace_artefact_3d(data, clusters, name,label_col="",footer=""):
                 label=""
                 filter=""
             else:
-                label=c.name+"<br>"+c.labels[k]
+                label=c.name+"<br>"+str(c.labels[k])
                 filter=label[0]
 
             li_data.append({
