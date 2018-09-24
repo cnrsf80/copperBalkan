@@ -73,13 +73,10 @@ data.index=range(len(data))
 #plt.show()
 
 #G0=nx.from_numpy_matrix(M0)
-
-
 modeles=[]
 
-
 def distance(i,j,name_i,name_j):
-    rc=scipy.spatial.distance.cityblock(i - j)
+    rc=scipy.spatial.distance.cityblock(i,j)
     return rc
 
 
@@ -89,25 +86,30 @@ def distance(i,j,name_i,name_j):
 mod=algo.model(data,"brut$Sample",range(1,19))
 mod.init_distances(distance)
 
+true_labels=mod.ideal_matrix()
+
 print("Arbre")
 for n_cluster in range(5,25):
+    print(n_cluster)
     mod2= algo.create_clusters_from_agglomerative(copy.deepcopy(mod), n_cluster)
-    mod2.init_metrics()
+    mod2.init_metrics(true_labels)
     modeles.append(mod2)
 
 print("Arbre avec distance")
 for n_cluster in range(5,25):
+    print(n_cluster)
     mod2= algo.create_clusters_from_agglomerative(copy.deepcopy(mod), n_cluster,affinity="precomputed")
-    mod2.init_metrics()
+    mod2.init_metrics(true_labels)
     modeles.append(mod2)
 
 for method in ["euclidean","precomputed"]:
     print("dbscan"+method)
-    for min_elements in range(2,5):
+    for min_elements in range(2,8):
         print(min_elements)
-        for i in np.arange(3,5,0.25):
+        for i in np.arange(2,7,0.25):
+            print(i)
             mod2= algo.create_clusters_from_dbscan(copy.deepcopy(mod), i, min_elements,1,method)
-            mod2.init_metrics()
+            mod2.init_metrics(true_labels)
             mod2.print_perfs()
             modeles.append(mod2)
 
@@ -117,17 +119,17 @@ for method in ["euclidean"]:
         for i in np.arange(0.1,0.5,0.05):
             print(i)
             mod2= algo.create_model_from_meanshift(copy.deepcopy(mod), i,min_bin_freq,method)
-            mod2.init_metrics()
+            mod2.init_metrics(true_labels)
             mod2.print_perfs()
             modeles.append(mod2)
 
-for method in ["nearest_neighbors","precomputed"]:
+for method in ["nearest_neighbors"]:
     print("spectral_"+method)
     for n_neighbors in range(5,15):
         print(n_neighbors)
         for i in range(6,20):
             mod2=algo.create_clusters_from_spectralclustering(copy.deepcopy(mod),i,n_neighbors,method=method)
-            mod2.init_metrics()
+            mod2.init_metrics(true_labels)
             mod2.print_perfs()
             modeles.append(mod2)
 

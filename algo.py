@@ -38,8 +38,8 @@ class model:
         composition=self.mesures()
 
         namefile="./saved/matrix_distance_"+self.name
-        if os.path.isfile(namefile) and force==False:
-            self.distances=np.load(namefile)
+        if os.path.isfile(namefile+".npy") and force==False:
+            self.distances=np.load(namefile+".npy")
         else:
             self.distances = np.asmatrix(np.zeros((len(composition.index), len(composition.index))))
             for i in range(size):
@@ -72,7 +72,7 @@ class model:
     def trace(self,filename,label_col_name="",url_base=""):
         title=self.print_perfs()+"\n"+self.print_cluster()
         s=("<a href='"+url_base+"/"+draw.trace_artefact_3d(self.mesures(), self.clusters, filename,label_col_name,title))+"'>représentation 3D</a>\n"
-        #s=s+("<a href='"+url_base + "/" + draw.trace_artefact_2d(self.mesures(), self.clusters, filename,label_col_name))+"'>représentation 2D</a>\n"
+        s=s+("<a href='"+url_base + "/" + draw.trace_artefact_2d(self.mesures(), self.clusters, filename,label_col_name))+"'>représentation 2D</a>\n"
         return self.print_perfs()+"\n"+s+"\n"
 
     def cluster_toarray(self):
@@ -86,34 +86,76 @@ class model:
         return self.data.iloc[:,self.mesures_col]
 
 
-    def init_metrics(self,test=None):
+    def init_metrics(self,labels_true):
         if len(self.clusters)>1:
-            self.silhouette_score= metrics.silhouette_score(self.mesures(), self.cluster_toarray())
-            self.score=round(self.silhouette_score*20*10)/10
+            labels=self.cluster_toarray()
+            self.silhouette_score= metrics.silhouette_score(self.mesures(), labels)
+            self.rand_index=metrics.adjusted_rand_score(labels_true, labels)
+
+            #self.self.adjusted_mutual_info_score=metrics.self.adjusted_mutual_info_score(labels_true,labels)
+
+            self.homogeneity_score=metrics.homogeneity_score(labels_true,labels)
+            self.completeness_score=metrics.completeness_score(labels_true,labels)
+            self.v_measure_score=metrics.v_measure_score(labels_true,labels)
+
+            self.score=round(1000*self.silhouette_score
+                             +((self.rand_index+1)/2
+                               +self.v_measure_score
+                               +self.homogeneity_score
+                               +self.completeness_score)
+                             *250)\
+                       /100
         else:
             self.score=0
-
-    def clusters_from_labels(self,labels):
-        n_clusters_=max(labels)+1
-        for i in range(n_clusters_):
-            self.clusters.append(cluster("cl_" + str(i), [], colors[i]))
-
-        i = 0
-        for l in labels:
-            if l >= 0:
-                self.clusters[l].add_index(i,self.data,self.name_col)
-            i = i + 1
 
 
     def print_perfs(self):
         s=("Algorithme : %s" % self.name)+"\n"
         s=s+("Nombre de clusters : %s" % len(self.clusters))+"\n"
         s = s +("Delay de traitement : %s sec" % self.delay)+"\n"
-        if self.silhouette_score>0:
-            s=s+("Silhouette score %s" % self.silhouette_score)+"\n"
+        s=s+"Indicateurs de performance du clustering (http://scikit-learn.org/stable/modules/classes.html#module-sklearn.metrics.cluster) :\n"
+        s=s+("Silhouette score %s" % self.silhouette_score)+"\n"
+        s=s+"Rand_index %s" % self.rand_index+"\n"
+        #s=s+"Information mutuelle (https://fr.wikipedia.org/wiki/Information_mutuelle) : %s" % self.adjusted_mutual_info_score+"\n"
+        s=s+"homogeneity_score %s" % self.homogeneity_score+"\n"
+        s=s+"v_measure_score %s" % self.homogeneity_score+"\n"
+        s=s+"completeness_score  %s" % self.completeness_score+"\n"
 
-        s = s +("Score %s" % self.score)+"\n"
+        s = s +("Score (silhouette sur 10 + rand,homogeneité, v_mesure et completness sur 2,5) %s / 20" % self.score)+"\n"
         return s
+
+
+    def clusters_from_labels(self, labels):
+        n_clusters_ = max(labels) + 1
+        for i in range(n_clusters_):
+            self.clusters.append(cluster("cl_" + str(i), [], colors[i]))
+
+        i = 0
+        for l in labels:
+            if l >= 0:
+                self.clusters[l].add_index(i, self.data, self.name_col)
+            i = i + 1
+
+    def ideal_matrix(self):
+        print("Fabrication de la matrice ideal")
+        clusters=np.asarray(np.zeros(len(self.data)),np.int8)
+        next_cluster=0
+        for k in range(len(self.data)):
+            print(len(self.data)-k)
+            item=self.data[self.name_col][k]
+            find=False
+            for i in range(k):
+                if item==self.data[self.name_col][i]:
+                    clusters[k]=clusters[i]
+                    find=True
+                    break
+            if not find:
+                next_cluster=next_cluster+1
+                clusters[k]=next_cluster
+
+        return clusters
+
+
 
 
 #definie un cluster
