@@ -1,5 +1,6 @@
 import copy
 import scipy
+import datetime
 import numpy as np
 import pandas as pd
 import folium
@@ -50,18 +51,51 @@ def create_site_matrix(data,artefact_clusters):
 
 
 
-
-
 def draw_site_onmap(mymap:folium.Map, G, sites_clusters, sites:pd.DataFrame ,file):
     for site in sites.iterrows():
         pos=[site[1]["Geo Latitude"],site[1]["Geo Longitude"]]
         folium.Marker(pos,site["Site"]).add_to(mymap)
 
 
+def getOccurenceCluster(models):
+    occurence = []
+    list_clusters=[]
+    list_model=[]
+    for m in models:
+        for c in m.clusters:
+            if list_clusters.__contains__(c):
+                k = list_clusters.index(c)
+                occurence[k] = occurence[k] + 1
+                list_model[k].append(m.name)
+            else:
+                list_clusters.append(c)
+                occurence.append(1)
+                list_model.append([m.name])
+
+
+    rc=pd.DataFrame(columns=["Occurence","Cluster","Model"])
+    rc["Occurence"]=occurence
+    rc["Cluster"] = list_clusters
+    rc["Model"]=list_model
+
+    rc=rc.sort_values("Occurence")
+
+    return rc
+
+
 #data = pd.read_excel("cnx013_supp_table_s1.xlsx").head(200)
-data = pd.read_excel("mesuresCIPIA_prod.xlsx")
+data = pd.read_excel("ACP_article.xlsx")
 data["Ref"]=data.index
 data.index=range(len(data))
+
+#Ajoute la catagorisation des mesures
+for i in range(len(data)):
+    name=data["Nom article"][i]
+    if ["Minette","Fer Fort","Vosges"].__contains__(name)==False:
+        data["Artefact"]=True
+    else:
+        data["Artefact"]=False
+
 
 # models=create_gaussian_mixture_model(mes,params=np.arange(1,30))
 # X=models[25].predict(data)
@@ -83,34 +117,36 @@ def distance(i,j,name_i,name_j):
 #mod=algo.model(data,"Ref",range(0,14))
 #mod.initDistance(distance)
 
-mod=algo.model(data,"brut$Sample",range(1,19))
+mod=algo.model(data,"Nom article",range(1,19))
 mod.init_distances(distance)
 
-true_labels=mod.ideal_matrix()
+true_labels=np.load("ideal_matrix.npy")
+#true_labels=mod.ideal_matrix()
+#np.save("ideal_matrix",true_labels)
+
 
 print("Arbre")
-for n_cluster in range(5,25):
+for n_cluster in range(5,50):
     print(n_cluster)
     mod2= algo.create_clusters_from_agglomerative(copy.deepcopy(mod), n_cluster)
     mod2.init_metrics(true_labels)
     modeles.append(mod2)
 
-print("Arbre avec distance")
-for n_cluster in range(5,25):
-    print(n_cluster)
-    mod2= algo.create_clusters_from_agglomerative(copy.deepcopy(mod), n_cluster,affinity="precomputed")
-    mod2.init_metrics(true_labels)
-    modeles.append(mod2)
+# print("Arbre avec distance")
+# for n_cluster in range(5,25):
+#     print(n_cluster)
+#     mod2= algo.create_clusters_from_agglomerative(copy.deepcopy(mod), n_cluster,affinity="precomputed")
+#     mod2.init_metrics(true_labels)
+#     modeles.append(mod2)
 
-for method in ["euclidean","precomputed"]:
+for method in ["euclidean"]:
     print("dbscan"+method)
-    for min_elements in range(2,8):
+    for min_elements in range(2,6):
         print(min_elements)
-        for i in np.arange(2,7,0.25):
+        for i in np.arange(0.3,2,0.2):
             print(i)
             mod2= algo.create_clusters_from_dbscan(copy.deepcopy(mod), i, min_elements,1,method)
             mod2.init_metrics(true_labels)
-            mod2.print_perfs()
             modeles.append(mod2)
 
 for method in ["euclidean"]:
@@ -120,7 +156,6 @@ for method in ["euclidean"]:
             print(i)
             mod2= algo.create_model_from_meanshift(copy.deepcopy(mod), i,min_bin_freq,method)
             mod2.init_metrics(true_labels)
-            mod2.print_perfs()
             modeles.append(mod2)
 
 for method in ["nearest_neighbors"]:
@@ -130,25 +165,36 @@ for method in ["nearest_neighbors"]:
         for i in range(6,20):
             mod2=algo.create_clusters_from_spectralclustering(copy.deepcopy(mod),i,n_neighbors,method=method)
             mod2.init_metrics(true_labels)
-            mod2.print_perfs()
             modeles.append(mod2)
 
 print(str(round(len(modeles)))+" models calculés")
 modeles.sort(key=lambda x:x.score,reverse=True)
 
+#Création des occurences
 code=""
+rc=getOccurenceCluster(modeles[1:70])
+for r in range(len(rc)):
+    code=code+"\n<h1>Cluster présent dans "+str(100*round(rc["Occurence"][r]/70))+"% des algos</h1>"
+    c=rc["Cluster"][r]
+    code=code+c.print(data,"Nom article")+"\n"
+    code=code+"\n présent dans "+",".join(rc["Model"][r])+"\n"
+print(create_html("occurences",code,"http://f80.fr/cnrs"))
+
+
+code="Calcul du "+str(datetime.datetime.now())+"\n\n"
 for i in range(0,len(modeles)):
     print("Trace du modele "+str(i))
     code=code+"\nPosition "+str(i+1)+"<br>"
-    if i<50:
-        code=code+modeles[i].trace("best"+str(i),"brut$Sample","http://f80.fr/cnrs")
+    if i<100:
+        code=code+modeles[i].trace("best"+str(i),"Nom article","http://f80.fr/cnrs")
     else:
         code=code+modeles[i].print_perfs()
 
 print(create_html("index",code,"http://f80.fr/cnrs"))
 
-
 #mod2.trace("dbscan_v3")
+
+
 
 exit(0)
 

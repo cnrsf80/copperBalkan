@@ -9,12 +9,12 @@ import numpy as np
 
 from networkx.algorithms import community
 import sklearn.cluster as sk
+from sklearn.neural_network import BernoulliRBM
 
 from tools import tirage
 
 colors=[]
 for i in range(200):colors.append(i)
-
 
 
 
@@ -98,30 +98,31 @@ class model:
             self.completeness_score=metrics.completeness_score(labels_true,labels)
             self.v_measure_score=metrics.v_measure_score(labels_true,labels)
 
-            self.score=round(1000*self.silhouette_score
-                             +((self.rand_index+1)/2
-                               +self.v_measure_score
-                               +self.homogeneity_score
-                               +self.completeness_score)
-                             *250)\
-                       /100
+            self.score=(self.silhouette_score*3+(self.rand_index+1)/2+self.v_measure_score+self.homogeneity_score/2+self.completeness_score/2)/6
+            self.score=round(self.score*20*100)/100
         else:
+            self.silhouette_score=0
             self.score=0
-
+            self.rand_index=0
+            self.homogeneity_score=0
+            self.completeness_score=0
+            self.v_measure_score=0
 
     def print_perfs(self):
-        s=("Algorithme : %s" % self.name)+"\n"
-        s=s+("Nombre de clusters : %s" % len(self.clusters))+"\n"
-        s = s +("Delay de traitement : %s sec" % self.delay)+"\n"
-        s=s+"Indicateurs de performance du clustering (http://scikit-learn.org/stable/modules/classes.html#module-sklearn.metrics.cluster) :\n"
-        s=s+("Silhouette score %s" % self.silhouette_score)+"\n"
-        s=s+"Rand_index %s" % self.rand_index+"\n"
-        #s=s+"Information mutuelle (https://fr.wikipedia.org/wiki/Information_mutuelle) : %s" % self.adjusted_mutual_info_score+"\n"
-        s=s+"homogeneity_score %s" % self.homogeneity_score+"\n"
-        s=s+"v_measure_score %s" % self.homogeneity_score+"\n"
-        s=s+"completeness_score  %s" % self.completeness_score+"\n"
+        s=("<h2>Algorithme : %s</h2>" % self.name)+"\n"
+        s = s + ("Delay de traitement : %s sec" % self.delay) + "\n"
+        s=s+("Nombre de clusters : %s" % len(self.clusters))+"\n\n"
 
-        s = s +("Score (silhouette sur 10 + rand,homogeneité, v_mesure et completness sur 2,5) %s / 20" % self.score)+"\n"
+        if len(self.clusters)>1:
+            s=s+"<a href='http://scikit-learn.org/stable/modules/classes.html#module-sklearn.metrics.cluster'>Indicateurs de performance du clustering</a>\n"
+            s=s+("Silhouette score %s" % self.silhouette_score)+"\n"
+            s=s+"Rand_index %s" % self.rand_index+"\n"
+            #s=s+"Information mutuelle (https://fr.wikipedia.org/wiki/Information_mutuelle) : %s" % self.adjusted_mutual_info_score+"\n"
+            s=s+"homogeneity_score %s" % self.homogeneity_score+"\n"
+            s=s+"v_measure_score %s" % self.homogeneity_score+"\n"
+            s=s+"completeness_score  %s" % self.completeness_score+"\n"
+
+            s = s +("\n<h2>Score (silhouette sur 10 + rand,homogeneité, v_mesure et completness sur 2,5) <strong>%s / 20</strong></h2>" % self.score)
         return s
 
 
@@ -184,6 +185,11 @@ class cluster:
         s=s+(" + ".join(data[label_col][self.index]))
         return s+"\n"
 
+    def __eq__(self, other):
+        if set(other.index).issubset(self.index) and set(self.index).issubset(other.index):
+            return True
+        else:
+            return False
 
 
 def create_clusters_from_spectralclustering(model:model,n_clusters:np.int,n_neighbors=10,method="precomputed"):
