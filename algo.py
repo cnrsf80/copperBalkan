@@ -98,7 +98,7 @@ class model:
             self.completeness_score=metrics.completeness_score(labels_true,labels)
             self.v_measure_score=metrics.v_measure_score(labels_true,labels)
 
-            self.score=(self.silhouette_score*3+(self.rand_index+1)/2+self.v_measure_score+self.homogeneity_score/2+self.completeness_score/2)/6
+            self.score=(self.silhouette_score+(self.rand_index+1)/2+self.v_measure_score+self.homogeneity_score/2+self.completeness_score/2)/4
             self.score=round(self.score*20*100)/100
         else:
             self.silhouette_score=0
@@ -242,6 +242,27 @@ def create_clusters_from_dbscan(mod:model,eps,min_elements,iter=100,metric="eucl
     mod.end_treatment()
 
     mod.clusters_from_labels(model.labels_)
+    return mod
+
+
+def create_clusters_from_optics(mod:model,rejection_ratio=0.5,maxima_ratio =0.5,min_elements=5,iter=100,metric="euclidean"):
+    mod.name="optics avec rejection_ratio ="+str(rejection_ratio )+" maxima_ratio ="+str(maxima_ratio )+" et min_elements="+str(min_elements)
+
+    try:
+        mod.start_treatment()
+        if metric=="precomputed":
+            model:sk.OPTICS=sk.OPTICS(maxima_ratio =maxima_ratio ,rejection_ratio=rejection_ratio ,min_samples=min_elements,n_jobs=-1,metric=metric).fit(mod.distances)
+        else:
+            model: sk.OPTICS= sk.OPTICS(maxima_ratio =maxima_ratio ,rejection_ratio=rejection_ratio ,min_samples=min_elements, n_jobs=-1, metric=metric).fit(mod.mesures())
+
+        mod.clusters_from_labels(model.labels_)
+
+    except:
+        print("Exception: on continue")
+        return None
+
+    mod.end_treatment()
+
     return mod
 
 

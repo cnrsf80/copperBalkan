@@ -35,7 +35,6 @@ def create_sites_df(data):
     return sites
 
 
-
 def create_site_matrix(data,artefact_clusters):
     sites=create_sites_df(data)
     M = np.asmatrix(np.zeros((len(sites), len(sites))))
@@ -84,17 +83,32 @@ def getOccurenceCluster(models):
 
 
 #data = pd.read_excel("cnx013_supp_table_s1.xlsx").head(200)
-data = pd.read_excel("ACP_article.xlsx")
+
+#data = pd.read_excel("ACP_article.xlsx")
+#col_name="Nom article"
+#n_mesures=19
+
+data = pd.read_excel("Ana-Barre Xij pour clustering 2.xlsx")
+col_name="id"
+n_mesures=11
+data=data[data.id != "Canigou"]
+
+
+
 data["Ref"]=data.index
 data.index=range(len(data))
 
+
+
+
+
 #Ajoute la catagorisation des mesures
-for i in range(len(data)):
-    name=data["Nom article"][i]
-    if ["Minette","Fer Fort","Vosges"].__contains__(name)==False:
-        data["Artefact"]=True
-    else:
-        data["Artefact"]=False
+# for i in range(len(data)):
+#     name=data[col_name][i]
+#     if ["Minette","Fer Fort","Vosges"].__contains__(name)==False:
+#         data["Artefact"]=True
+#     else:
+#         data["Artefact"]=False
 
 
 # models=create_gaussian_mixture_model(mes,params=np.arange(1,30))
@@ -113,41 +127,50 @@ def distance(i,j,name_i,name_j):
     rc=scipy.spatial.distance.cityblock(i,j)
     return rc
 
-
-#mod=algo.model(data,"Ref",range(0,14))
-#mod.initDistance(distance)
-
-mod=algo.model(data,"Nom article",range(1,19))
+mod=algo.model(data,col_name,range(1,n_mesures))
 mod.init_distances(distance)
 
-true_labels=np.load("ideal_matrix.npy")
-#true_labels=mod.ideal_matrix()
+#true_labels=np.load("ideal_matrix.npy")
+true_labels=mod.ideal_matrix()
 #np.save("ideal_matrix",true_labels)
 
 
 print("Arbre")
-for n_cluster in range(5,50):
+for n_cluster in range(8,30):
     print(n_cluster)
     mod2= algo.create_clusters_from_agglomerative(copy.deepcopy(mod), n_cluster)
     mod2.init_metrics(true_labels)
     modeles.append(mod2)
 
-# print("Arbre avec distance")
-# for n_cluster in range(5,25):
-#     print(n_cluster)
-#     mod2= algo.create_clusters_from_agglomerative(copy.deepcopy(mod), n_cluster,affinity="precomputed")
-#     mod2.init_metrics(true_labels)
-#     modeles.append(mod2)
+print("Arbre avec distance")
+for n_cluster in range(5,25):
+    print(n_cluster)
+    mod2= algo.create_clusters_from_agglomerative(copy.deepcopy(mod), n_cluster,affinity="precomputed")
+    mod2.init_metrics(true_labels)
+    modeles.append(mod2)
 
 for method in ["euclidean"]:
     print("dbscan"+method)
-    for min_elements in range(2,6):
+    for min_elements in range(2,8):
         print(min_elements)
-        for i in np.arange(0.3,2,0.2):
-            print(i)
-            mod2= algo.create_clusters_from_dbscan(copy.deepcopy(mod), i, min_elements,1,method)
-            mod2.init_metrics(true_labels)
-            modeles.append(mod2)
+        #for i in np.arange(0.3,2,0.5):
+         #   print(i)
+        mod2= algo.create_clusters_from_dbscan(copy.deepcopy(mod), np.inf, min_elements,1,method)
+        mod2.init_metrics(true_labels)
+        modeles.append(mod2)
+
+
+for method in ["euclidean"]:
+    #for min_elements in range(2,6):
+    min_elements=2
+    print("optics" + method + " min_element=" + str(min_elements))
+    for maxima_ratio in np.arange(0.1,0.9,0.2):
+        for rejection_ratio in np.arange(0.1,0.9,0.2):
+            mod2= algo.create_clusters_from_optics(copy.deepcopy(mod),rejection_ratio ,maxima_ratio , min_elements,1,method)
+            if not mod2 is None:
+                mod2.init_metrics(true_labels)
+                modeles.append(mod2)
+
 
 for method in ["euclidean"]:
     print("meanshift")
@@ -160,7 +183,7 @@ for method in ["euclidean"]:
 
 for method in ["nearest_neighbors"]:
     print("spectral_"+method)
-    for n_neighbors in range(5,15):
+    for n_neighbors in range(5,10):
         print(n_neighbors)
         for i in range(6,20):
             mod2=algo.create_clusters_from_spectralclustering(copy.deepcopy(mod),i,n_neighbors,method=method)
@@ -172,11 +195,12 @@ modeles.sort(key=lambda x:x.score,reverse=True)
 
 #Création des occurences
 code=""
-rc=getOccurenceCluster(modeles[1:70])
+size=150
+rc=getOccurenceCluster(modeles[0:size])
 for r in range(len(rc)):
-    code=code+"\n<h1>Cluster présent dans "+str(100*round(rc["Occurence"][r]/70))+"% des algos</h1>"
+    code=code+"\n<h1>Cluster présent dans "+str(round(100*rc["Occurence"][r]/size))+"% des algos</h1>"
     c=rc["Cluster"][r]
-    code=code+c.print(data,"Nom article")+"\n"
+    code=code+c.print(data,col_name)+"\n"
     code=code+"\n présent dans "+",".join(rc["Model"][r])+"\n"
 print(create_html("occurences",code,"http://f80.fr/cnrs"))
 
@@ -185,8 +209,8 @@ code="Calcul du "+str(datetime.datetime.now())+"\n\n"
 for i in range(0,len(modeles)):
     print("Trace du modele "+str(i))
     code=code+"\nPosition "+str(i+1)+"<br>"
-    if i<100:
-        code=code+modeles[i].trace("best"+str(i),"Nom article","http://f80.fr/cnrs")
+    if i<size:
+        code=code+modeles[i].trace("best"+str(i),col_name,"http://f80.fr/cnrs")
     else:
         code=code+modeles[i].print_perfs()
 
