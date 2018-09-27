@@ -249,15 +249,15 @@ def create_clusters_from_dbscan(mod:model,eps,min_elements,iter=100,metric="eucl
     return mod
 
 
-def create_clusters_from_optics(mod:model,rejection_ratio=0.5,maxima_ratio =0.5,min_elements=5,iter=100,metric="euclidean"):
+def create_clusters_from_optics(mod:model,rejection_ratio=0.5,maxima_ratio =0.5,min_elements=5,iter=100,metric="euclidean",max_bound=np.inf):
     mod.setname("OPTICS rejection_ratio="+str(rejection_ratio )+" maxima_ratio="+str(maxima_ratio )+" min_elements="+str(min_elements))
 
     try:
         mod.start_treatment()
         if metric=="precomputed":
-            model:sk.OPTICS=sk.OPTICS(maxima_ratio =maxima_ratio ,rejection_ratio=rejection_ratio ,min_samples=min_elements,n_jobs=-1,metric=metric).fit(mod.distances)
+            model:sk.OPTICS=sk.OPTICS(max_bound=max_bound,maxima_ratio =maxima_ratio ,rejection_ratio=rejection_ratio ,min_samples=min_elements,n_jobs=-1,metric=metric).fit(mod.distances)
         else:
-            model: sk.OPTICS= sk.OPTICS(maxima_ratio =maxima_ratio ,rejection_ratio=rejection_ratio ,min_samples=min_elements, n_jobs=-1, metric=metric).fit(mod.mesures())
+            model: sk.OPTICS= sk.OPTICS(max_bound=max_bound,maxima_ratio =maxima_ratio ,rejection_ratio=rejection_ratio ,min_samples=min_elements, n_jobs=-1, metric=metric).fit(mod.mesures())
 
         mod.clusters_from_labels(model.labels_)
 

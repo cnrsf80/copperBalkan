@@ -69,7 +69,7 @@ def getOccurenceCluster(models):
                 k = list_clusters.index(c)
                 occurence[k] = occurence[k] + 1
                 list_model[k].append(m.name)
-                if not list_algo[K].__contains__(m.type):list_algo[k].append(m.type)
+                if not list_algo[k].__contains__(m.type):list_algo[k].append(m.type)
             else:
                 print("Ajout de "+c.name)
                 list_clusters.append(c)
@@ -163,9 +163,9 @@ for method in ["euclidean"]:
 
 
 for method in ["euclidean"]:
-    for min_elements in range(2,10):
-        for maxima_ratio in np.arange(0.1,0.95,0.1):
-            for rejection_ratio in np.arange(0.1,0.95,0.1):
+    for min_elements in range(2,8):
+        for maxima_ratio in np.arange(0.1,0.95,0.25):
+            for rejection_ratio in np.arange(0.1,0.95,0.25):
                 mod2= algo.create_clusters_from_optics(copy.deepcopy(mod),rejection_ratio ,maxima_ratio , min_elements,1,method)
                 if not mod2 is None:
                     mod2.init_metrics(true_labels)
