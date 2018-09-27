@@ -5,6 +5,8 @@ import numpy as np
 import pandas as pd
 import folium
 import algo
+import openpyxl
+
 
 #Definitions
 from tools import create_html
@@ -60,15 +62,19 @@ def getOccurenceCluster(models):
     occurence = []
     list_clusters=[]
     list_model=[]
+    list_algo=[]
     for m in models:
         for c in m.clusters:
             if list_clusters.__contains__(c):
                 k = list_clusters.index(c)
                 occurence[k] = occurence[k] + 1
                 list_model[k].append(m.name)
+                if not list_algo[K].__contains__(m.type):list_algo[k].append(m.type)
             else:
+                print("Ajout de "+c.name)
                 list_clusters.append(c)
                 occurence.append(1)
+                list_algo.append([m.type])
                 list_model.append([m.name])
 
 
@@ -76,6 +82,7 @@ def getOccurenceCluster(models):
     rc["Occurence"]=occurence
     rc["Cluster"] = list_clusters
     rc["Model"]=list_model
+    rc["Algos"]=list_algo
 
     rc=rc.sort_values("Occurence")
 
@@ -88,10 +95,10 @@ def getOccurenceCluster(models):
 #col_name="Nom article"
 #n_mesures=19
 
-data = pd.read_excel("Ana-Barre Xij pour clustering 2.xlsx")
+data = pd.read_excel("Ana-Barre Xij pour clustering 3.xlsx")
 col_name="id"
 n_mesures=11
-data=data[data.id != "Canigou"]
+#data=data[data.id != "Canigou"]
 
 
 
@@ -136,23 +143,18 @@ true_labels=mod.ideal_matrix()
 
 
 print("Arbre")
-for n_cluster in range(8,30):
-    print(n_cluster)
+for n_cluster in range(10,25):
     mod2= algo.create_clusters_from_agglomerative(copy.deepcopy(mod), n_cluster)
     mod2.init_metrics(true_labels)
     modeles.append(mod2)
 
-print("Arbre avec distance")
-for n_cluster in range(5,25):
-    print(n_cluster)
+for n_cluster in range(10,25):
     mod2= algo.create_clusters_from_agglomerative(copy.deepcopy(mod), n_cluster,affinity="precomputed")
     mod2.init_metrics(true_labels)
     modeles.append(mod2)
 
 for method in ["euclidean"]:
-    print("dbscan"+method)
     for min_elements in range(2,8):
-        print(min_elements)
         #for i in np.arange(0.3,2,0.5):
          #   print(i)
         mod2= algo.create_clusters_from_dbscan(copy.deepcopy(mod), np.inf, min_elements,1,method)
@@ -161,22 +163,20 @@ for method in ["euclidean"]:
 
 
 for method in ["euclidean"]:
-    #for min_elements in range(2,6):
-    min_elements=2
-    print("optics" + method + " min_element=" + str(min_elements))
-    for maxima_ratio in np.arange(0.1,0.9,0.2):
-        for rejection_ratio in np.arange(0.1,0.9,0.2):
-            mod2= algo.create_clusters_from_optics(copy.deepcopy(mod),rejection_ratio ,maxima_ratio , min_elements,1,method)
-            if not mod2 is None:
-                mod2.init_metrics(true_labels)
-                modeles.append(mod2)
+    for min_elements in range(2,10):
+        for maxima_ratio in np.arange(0.1,0.95,0.1):
+            for rejection_ratio in np.arange(0.1,0.95,0.1):
+                mod2= algo.create_clusters_from_optics(copy.deepcopy(mod),rejection_ratio ,maxima_ratio , min_elements,1,method)
+                if not mod2 is None:
+                    mod2.init_metrics(true_labels)
+                    mod2.print_perfs()
+                    modeles.append(mod2)
 
 
 for method in ["euclidean"]:
     print("meanshift")
     for min_bin_freq in range(1,2):
         for i in np.arange(0.1,0.5,0.05):
-            print(i)
             mod2= algo.create_model_from_meanshift(copy.deepcopy(mod), i,min_bin_freq,method)
             mod2.init_metrics(true_labels)
             modeles.append(mod2)
@@ -184,7 +184,6 @@ for method in ["euclidean"]:
 for method in ["nearest_neighbors"]:
     print("spectral_"+method)
     for n_neighbors in range(5,10):
-        print(n_neighbors)
         for i in range(6,20):
             mod2=algo.create_clusters_from_spectralclustering(copy.deepcopy(mod),i,n_neighbors,method=method)
             mod2.init_metrics(true_labels)
@@ -195,7 +194,7 @@ modeles.sort(key=lambda x:x.score,reverse=True)
 
 #Création des occurences
 code=""
-size=150
+size=round(len(modeles)/1.5)
 rc=getOccurenceCluster(modeles[0:size])
 for r in range(len(rc)):
     code=code+"\n<h1>Cluster présent dans "+str(round(100*rc["Occurence"][r]/size))+"% des algos</h1>"
@@ -203,6 +202,22 @@ for r in range(len(rc)):
     code=code+c.print(data,col_name)+"\n"
     code=code+"\n présent dans "+",".join(rc["Model"][r])+"\n"
 print(create_html("occurences",code,"http://f80.fr/cnrs"))
+
+
+dfOccurences=pd.DataFrame(data={"Cluster":rc["Cluster"],"Model":rc["Model"],"Algos":rc["Algos"],"Occurence":rc["Occurence"]})
+l_items=list(set(data[col_name].get_values()))
+
+for item in l_items:
+    print(item)
+    dfOccurences[item] = [0] * len(rc)
+    for i in range(len(rc)):
+        c=dfOccurences["Cluster"][i]
+        dfOccurences[item][i]=c.labels.count(item)
+
+
+writer=pd.ExcelWriter("./saved/occurences.xlsx")
+dfOccurences.to_excel(writer,"Sheet1")
+writer.save()
 
 
 code="Calcul du "+str(datetime.datetime.now())+"\n\n"

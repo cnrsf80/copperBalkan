@@ -9,7 +9,6 @@ import numpy as np
 
 from networkx.algorithms import community
 import sklearn.cluster as sk
-from sklearn.neural_network import BernoulliRBM
 
 from tools import tirage
 
@@ -126,16 +125,18 @@ class model:
         return s
 
 
-    def clusters_from_labels(self, labels):
+    def clusters_from_labels(self, labels,name="cl_"):
         n_clusters_ = max(labels) + 1
         for i in range(n_clusters_):
-            self.clusters.append(cluster("cl_" + str(i), [], colors[i]))
+            self.clusters.append(cluster(name + str(i), [], colors[i]))
 
         i = 0
         for l in labels:
             if l >= 0:
                 self.clusters[l].add_index(i, self.data, self.name_col)
             i = i + 1
+
+
 
     def ideal_matrix(self):
         print("Fabrication de la matrice ideal")
@@ -156,7 +157,10 @@ class model:
 
         return clusters
 
-
+    def setname(self, name):
+        self.name=name
+        self.type=name.split(" ")[0]
+        print(name)
 
 
 #definie un cluster
@@ -193,7 +197,7 @@ class cluster:
 
 
 def create_clusters_from_spectralclustering(model:model,n_clusters:np.int,n_neighbors=10,method="precomputed"):
-    model.name="spectralclustering avec n_cluster="+str(n_clusters)+" et n_neighbors="+str(n_neighbors)
+    model.setname("SPECTRAL avec n_cluster="+str(n_clusters)+" et n_neighbors="+str(n_neighbors))
 
     model.start_treatment()
     if method=="precomputed":
@@ -202,7 +206,7 @@ def create_clusters_from_spectralclustering(model:model,n_clusters:np.int,n_neig
         comp = sk.SpectralClustering(n_clusters=n_clusters, affinity=method, n_neighbors=n_neighbors).fit(model.mesures())
     model.end_treatment()
 
-    model.clusters_from_labels(comp.labels_)
+    model.clusters_from_labels(comp.labels_,"spectralclustering")
 
     return model
 
@@ -231,7 +235,7 @@ def create_clusters_from_girvannewman(G):
 
 #http://scikit-learn.org/stable/modules/generated/sklearn.cluster.dbscan.html#sklearn.cluster.dbscan
 def create_clusters_from_dbscan(mod:model,eps,min_elements,iter=100,metric="euclidean"):
-    mod.name="dbscan avec eps="+str(eps)+" et min_elements="+str(min_elements)
+    mod.setname("DBSCAN avec eps="+str(eps)+" et min_elements="+str(min_elements))
 
     mod.start_treatment()
     if metric=="precomputed":
@@ -241,12 +245,12 @@ def create_clusters_from_dbscan(mod:model,eps,min_elements,iter=100,metric="eucl
 
     mod.end_treatment()
 
-    mod.clusters_from_labels(model.labels_)
+    mod.clusters_from_labels(model.labels_,"dbscan_")
     return mod
 
 
 def create_clusters_from_optics(mod:model,rejection_ratio=0.5,maxima_ratio =0.5,min_elements=5,iter=100,metric="euclidean"):
-    mod.name="optics avec rejection_ratio ="+str(rejection_ratio )+" maxima_ratio ="+str(maxima_ratio )+" et min_elements="+str(min_elements)
+    mod.setname("OPTICS rejection_ratio="+str(rejection_ratio )+" maxima_ratio="+str(maxima_ratio )+" min_elements="+str(min_elements))
 
     try:
         mod.start_treatment()
@@ -268,7 +272,7 @@ def create_clusters_from_optics(mod:model,rejection_ratio=0.5,maxima_ratio =0.5,
 
 
 def create_clusters_from_agglomerative(mod, n_cluster=10,affinity="euclidean"):
-    mod.name = "Classification Hierarchique avec ncluster=" + str(n_cluster)
+    mod.setname("HAC " + str(n_cluster)+" clusters")
 
     mod.start_treatment()
     if affinity=="precomputed":
@@ -278,18 +282,18 @@ def create_clusters_from_agglomerative(mod, n_cluster=10,affinity="euclidean"):
 
     mod.end_treatment()
 
-    mod.clusters_from_labels(model.labels_)
+    mod.clusters_from_labels(model.labels_,"Hierarchique")
     return mod
 
 
 def create_model_from_meanshift(mod:model,quantile=0.2,min_bin_freq=1,method="euclidean"):
-    mod.name = "meanshift avec quantile a "+str(quantile)+" & min_bin_freq="+str(min_bin_freq)
+    mod.setname("meanshift q="+str(quantile)+" & min_freq="+str(min_bin_freq))
 
     mod.start_treatment()
     bandwidth = estimate_bandwidth(mod.mesures(), quantile=quantile)
     ms = MeanShift(bandwidth=bandwidth,min_bin_freq=min_bin_freq).fit(mod.mesures())
     mod.end_treatment()
-    mod.clusters_from_labels(ms.labels_)
+    mod.clusters_from_labels(ms.labels_,"Meanshift")
 
     return mod
 
