@@ -4,29 +4,45 @@ import pandas as pd
 import networkx as nx
 import matplotlib.pyplot as plt
 from matplotlib import colors as mcolors
+import numpy
 
-def trace_artefact_2d(data, clusters, name,col_name=""):
+colors = dict(mcolors.BASE_COLORS, **mcolors.CSS4_COLORS)
+
+def get_color(index):
+    return list(colors.values())[index]
+
+def trace_artefact_2d(data, clusters, path,name,col_name=""):
     pca = decomp.pca.PCA(n_components=2)
     pca.fit(data)
     newdata = pca.transform(data)
-    x=[]
-    y=[]
 
-
-    colors = dict(mcolors.BASE_COLORS, **mcolors.CSS4_COLORS)
     for c in clusters:
-        cv=list(colors.values())
-        plt.scatter(x=newdata[c.index,0],y=newdata[c.index,1],c=cv[c.color],marker=c.marker,label=c.name,alpha=0.3)
+        plt.scatter(x=newdata[c.index,0],y=newdata[c.index,1],c=c.color,marker=c.marker,label=c.name,alpha=0.3)
 
     plt.legend(title_fontsize="xx-small", bbox_to_anchor=(0.95, 1), loc=2, borderaxespad=0.)
-    plt.savefig("./saved/"+name+".png",dpi=400)
+    plt.savefig(path+"/"+name+".png",dpi=400)
     plt.clf()
 
     return name+".png"
 
 
+def trace_spectre(model,X):
+    reachability = model.reachability_[model.ordering_]
+    labels = model.labels_[model.ordering_]
 
-def trace_artefact_3d(data, clusters, name,label_col="",footer=""):
+    space = numpy.arange(len(X))
+
+    for k, c in zip(range(0, 5), colors):
+        Xk = space[labels == k]
+        Rk = reachability[labels == k]
+        plt.plot(Xk, Rk, c, alpha=0.3)
+
+    plt.plot(space[labels == -1], reachability[labels == -1], 'k.', alpha=0.3)
+    plt.set_ylabel('Reachability (epsilon distance)')
+    plt.set_title('Reachability Plot')
+
+
+def trace_artefact_3d(data, clusters, path,name,label_col="",footer=""):
     pca = decomp.pca.PCA(n_components=3)
     pca.fit(data)
     newdata = pca.transform(data)
@@ -45,7 +61,7 @@ def trace_artefact_3d(data, clusters, name,label_col="",footer=""):
                 'x': newdata[c.index[k], 0],
                 'y': newdata[c.index[k], 1],
                 'z': newdata[c.index[k], 2],
-                'style': c.color,
+                'style': c.position,
                 'label':label,
                 'cluster':c.name
             })
@@ -57,13 +73,6 @@ def trace_artefact_3d(data, clusters, name,label_col="",footer=""):
     g.height = '800px'
     g.style = 'dot-color'
     g.tooltip="""function (point) { return '<b>' + point.data.label + '</b>'; }"""
-    # g.onclick="""function (point) {
-    #                             this.dataPoints.forEach((p)=>{
-    #                                 debugger;
-    #                                 if(p.point.data.cluster!=point.cluster);
-    #                                     this.dataPoints.remove(p);
-    #                             });
-    #             }"""
     g.showPerspective = True
     g.showXAxis=False
     g.showYAxis=False
@@ -79,11 +88,11 @@ def trace_artefact_3d(data, clusters, name,label_col="",footer=""):
     }
 
     g.plot(df_data)
-    g.html(df_data, save=True, save_name=name, dated=False)
+    g.html(df_data, save=True, save_path=path,save_name=name, dated=False)
 
     footer=footer.replace("\n","<br>")
 
-    file=open("./saved/"+name+".html","a")
+    file=open(path+"/"+name+".html","a")
     file.write("<p>" + footer + "</p>")
     file.close()
 

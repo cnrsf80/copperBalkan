@@ -68,10 +68,10 @@ class model:
     def end_treatment(self):
         self.delay=round((time.time()-self.delay)*10)/10
 
-    def trace(self,filename,label_col_name="",url_base=""):
+    def trace(self,path,filename,label_col_name="",url_base=""):
         title=self.print_perfs()+"\n"+self.print_cluster()
-        s=("<a href='"+url_base+"/"+draw.trace_artefact_3d(self.mesures(), self.clusters, filename,label_col_name,title))+"'>représentation 3D</a>\n"
-        s=s+("<a href='"+url_base + "/" + draw.trace_artefact_2d(self.mesures(), self.clusters, filename,label_col_name))+"'>représentation 2D</a>\n"
+        s=("<a href='"+url_base+"/"+draw.trace_artefact_3d(self.mesures(), self.clusters, path,filename,label_col_name,title))+"'>représentation 3D</a>\n"
+        #s=s+("<a href='"+url_base + "/" + draw.trace_artefact_2d(self.mesures(), self.clusters, path,filename,label_col_name))+"'>représentation 2D</a>\n"
         return self.print_perfs()+"\n"+s+"\n"
 
     def cluster_toarray(self):
@@ -107,6 +107,8 @@ class model:
             self.completeness_score=0
             self.v_measure_score=0
 
+        return self.print_perfs()
+
     def print_perfs(self):
         s=("<h2>Algorithme : %s</h2>" % self.name)+"\n"
         s = s + ("Delay de traitement : %s sec" % self.delay) + "\n"
@@ -128,7 +130,7 @@ class model:
     def clusters_from_labels(self, labels,name="cl_"):
         n_clusters_ = max(labels) + 1
         for i in range(n_clusters_):
-            self.clusters.append(cluster(name + str(i), [], colors[i]))
+            self.clusters.append(cluster(name + str(i), [], i,i))
 
         i = 0
         for l in labels:
@@ -165,11 +167,12 @@ class model:
 
 #definie un cluster
 class cluster:
-    def __init__(self, name="",index=[],color="red"):
+    def __init__(self, name="",index=[],color="red",pos=0):
         self.index = index
         self.name = name
-        self.color=color
+        self.color=draw.get_color(color)
         self.labels=[]
+        self.position=pos
         self.marker=tirage(['^','o','v','<','>','x','D','*'])
 
     def contain(self,i):
@@ -250,14 +253,22 @@ def create_clusters_from_dbscan(mod:model,eps,min_elements,iter=100,metric="eucl
 
 
 def create_clusters_from_optics(mod:model,rejection_ratio=0.5,maxima_ratio =0.5,min_elements=5,iter=100,metric="euclidean",max_bound=np.inf):
-    mod.setname("OPTICS rejection_ratio="+str(rejection_ratio )+" maxima_ratio="+str(maxima_ratio )+" min_elements="+str(min_elements))
+    mod.setname("OPTICS rejection_ratio="+str(round(rejection_ratio*1000)/1000)+" maxima_ratio="+str(maxima_ratio )+" min_elements="+str(min_elements))
 
     try:
+        X=mod.mesures()
         mod.start_treatment()
-        if metric=="precomputed":
-            model:sk.OPTICS=sk.OPTICS(max_bound=max_bound,maxima_ratio =maxima_ratio ,rejection_ratio=rejection_ratio ,min_samples=min_elements,n_jobs=-1,metric=metric).fit(mod.distances)
-        else:
-            model: sk.OPTICS= sk.OPTICS(max_bound=max_bound,maxima_ratio =maxima_ratio ,rejection_ratio=rejection_ratio ,min_samples=min_elements, n_jobs=-1, metric=metric).fit(mod.mesures())
+        model: sk.OPTICS= sk.OPTICS(max_bound=max_bound,
+                                    maxima_ratio =maxima_ratio ,
+                                    rejection_ratio=rejection_ratio ,
+                                    min_samples=min_elements,
+                                    n_jobs=-1,
+                                    metric=metric)\
+
+        model.fit(X)
+
+        #Production du spectre
+        #draw.trace_spectre(model,X)
 
         mod.clusters_from_labels(model.labels_)
 
