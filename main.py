@@ -1,12 +1,11 @@
 import copy
+
+import folium
 import scipy
 import datetime
 import numpy as np
 import pandas as pd
-import folium
 import algo
-import openpyxl
-
 
 #Definitions
 from tools import create_html
@@ -170,6 +169,18 @@ mod.init_distances(distance)
 true_labels=mod.ideal_matrix()
 #np.save("ideal_matrix",true_labels)
 
+print("Neural gas")
+for passes in range(50,150,50):
+    for distance_toremove_edge in range(5,20,1):
+        mod2= algo.create_cluster_from_neuralgasnetwork(
+            copy.deepcopy(mod),
+            passes=passes,
+            distance_toremove_edge=distance_toremove_edge)
+        print(mod2.init_metrics(true_labels))
+        print(mod2.print_cluster())
+        modeles.append(mod2)
+
+exit(0)
 
 print("Arbre")
 for n_cluster in range(10,25):
@@ -188,7 +199,6 @@ for method in ["euclidean"]:
         mod2= algo.create_clusters_from_dbscan(copy.deepcopy(mod), np.inf, min_elements,1,method)
         print(mod2.init_metrics(true_labels))
         modeles.append(mod2)
-
 
 for method in ["euclidean"]:
     for min_elements in range(2,8):
@@ -221,9 +231,9 @@ modeles.sort(key=lambda x:x.score,reverse=True)
 size = round(len(modeles))
 
 url_base="http://f80.fr/cnrs"
-print("Matrice d'occurence : "+url_base+"/"+create_occurence_file(modeles,data,col_name,"occurences",size)+".html")
 name=str(datetime.datetime.now()).split(".")[0].replace(":","").replace("2018-","")
 create_trace(modeles,col_name,url_base,"best"+name)
+print("Matrice d'occurence : "+url_base+"/"+create_occurence_file(modeles,data,col_name,"occurences",size)+".html")
 
 exit(0)
 

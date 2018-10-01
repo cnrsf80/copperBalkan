@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" autoUpload="Always">
+  <component name="PublishConfigData" autoUpload="Always" serverName="root@192.168.1.83:22">
     <serverData>
       <paths name="OrangePi">
         <serverdata>
@@ -13,6 +13,20 @@
         <serverdata>
           <mappings>
             <mapping deploy="/cnrs" local="$PROJECT_DIR$/saved" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="pihome">
+        <serverdata>
+          <mappings>
+            <mapping local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="root@192.168.1.83:22">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/tmp/pycharm_project_887" local="$PROJECT_DIR$" />
           </mappings>
         </serverdata>
       </paths>

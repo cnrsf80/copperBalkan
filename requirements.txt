@@ -3,3 +3,7 @@ numpy
 pandas
 IPython
 ezvis3d
+networkx
+folium
+xlrd
+openpyxl

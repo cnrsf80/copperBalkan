@@ -1,5 +1,5 @@
 from sklearn.cluster import estimate_bandwidth, MeanShift
-
+from gng import GrowingNeuralGas
 import os
 import draw
 import time
@@ -14,9 +14,6 @@ from tools import tirage
 
 colors=[]
 for i in range(200):colors.append(i)
-
-
-
 
 #Represente un model après entrainement
 class model:
@@ -71,7 +68,7 @@ class model:
     def trace(self,path,filename,label_col_name="",url_base=""):
         title=self.print_perfs()+"\n"+self.print_cluster()
         s=("<a href='"+url_base+"/"+draw.trace_artefact_3d(self.mesures(), self.clusters, path,filename,label_col_name,title))+"'>représentation 3D</a>\n"
-        #s=s+("<a href='"+url_base + "/" + draw.trace_artefact_2d(self.mesures(), self.clusters, path,filename,label_col_name))+"'>représentation 2D</a>\n"
+        s=s+("<a href='"+url_base + "/" + draw.trace_artefact_2d(self.mesures(), self.clusters, path,filename,label_col_name))+"'>représentation 2D</a>\n"
         return self.print_perfs()+"\n"+s+"\n"
 
     def cluster_toarray(self):
@@ -83,6 +80,7 @@ class model:
 
     def mesures(self):
         return self.data.iloc[:,self.mesures_col]
+
 
 
     def init_metrics(self,labels_true):
@@ -128,7 +126,7 @@ class model:
 
 
     def clusters_from_labels(self, labels,name="cl_"):
-        n_clusters_ = max(labels) + 1
+        n_clusters_ = round(max(labels) + 1)
         for i in range(n_clusters_):
             self.clusters.append(cluster(name + str(i), [], i,i))
 
@@ -163,6 +161,19 @@ class model:
         self.name=name
         self.type=name.split(" ")[0]
         print(name)
+
+    def clusters_from_real(self, data,name):
+        pts=self.mesures().values
+        labels=[0]*len(pts)
+        for p in data:
+            for i in range(len(pts)):
+                a=p[0]
+                b=pts[i]
+                if np.array_equal(a,b):
+                    labels[i]=int(p[1])
+
+        self.clusters_from_labels(labels,name)
+
 
 
 #definie un cluster
@@ -212,6 +223,26 @@ def create_clusters_from_spectralclustering(model:model,n_clusters:np.int,n_neig
     model.clusters_from_labels(comp.labels_,"spectralclustering")
 
     return model
+
+from sklearn import datasets
+from sklearn.preprocessing import StandardScaler
+def create_cluster_from_neuralgasnetwork(model:model,a=0.5,passes=80,distance_toremove_edge=8):
+    data=model.mesures().values
+
+    model.setname("NEURALGAS")
+    model.start_treatment()
+
+    #data = datasets.load_digits().data
+    gng = GrowingNeuralGas(data)
+    gng.fit_network(e_b=0.05, e_n=0.006, distance_toremove_edge=distance_toremove_edge, l=100, a=0.5, d=0.995, passes=passes, plot_evolution=False)
+    model.end_treatment()
+
+    print('Found %d clusters.' % gng.number_of_clusters())
+    model.clusters_from_real(gng.cluster_data(),"NEURALGAS_")
+    #gng.plot_clusters(gng.cluster_data())
+    return model
+
+
 
 
 
