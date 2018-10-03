@@ -17,7 +17,7 @@ def trace_artefact_2d(data, clusters, path,name,col_name=""):
     newdata = pca.transform(data)
 
     for c in clusters:
-        plt.scatter(x=newdata[c.index,0],y=newdata[c.index,1],c=c.color,marker=c.marker,label=c.name,alpha=0.3)
+        plt.scatter(x=newdata[c.index,0],y=newdata[c.index,1],c=[c.color],marker=c.marker,label=c.name,alpha=0.3)
 
     plt.legend(title_fontsize="xx-small", bbox_to_anchor=(0.95, 1), loc=2, borderaxespad=0.)
     plt.savefig(path+"/"+name+".png",dpi=400)
@@ -42,6 +42,55 @@ def trace_spectre(model,X):
     plt.set_title('Reachability Plot')
 
 
+from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.pyplot as plt
+
+def drawOnPlot_3D(points,lines):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    for p in points:
+        ax.scatter(p[0],p[1],p[2],c="r",marker="o")
+
+    #for l in lines:    ax.plot3D()
+
+
+
+def draw_3D(li_data,path,name,footer="",lines=None):
+    df_data = pd.DataFrame(li_data)
+
+    g = v3d.Vis3d()
+    g.width = '1200px'
+    g.height = '800px'
+    g.style = 'dot-color'
+    g.tooltip = """function (point) { return '<b>' + point.data.label + '</b>'; }"""
+    g.showPerspective = True
+    g.showXAxis = False
+    g.showYAxis = False
+    g.showZAxis = False
+    g.showGrid = True
+    g.keepAspectRatio = True
+    g.verticalRatio = 1.0
+
+    g.cameraPosition = {'horizontal':-0.54,'vertical':0.5,'distance':2}
+    g.plot(df_data)
+
+    if not lines == None:
+        df_line = pd.DataFrame(lines)
+        #g.style="line"
+        #g.plot(df_line)
+
+    g.html(df_data, save=True, save_path=path, save_name=name, dated=False)
+
+    footer = footer.replace("\n", "<br>")
+    file = open(path + "/" + name + ".html", "a")
+    file.write("<p>" + footer + "</p>")
+    file.close()
+
+    return name + ".html"
+
+
+
+
 def trace_artefact_3d(data, clusters, path,name,label_col="",footer=""):
     pca = decomp.pca.PCA(n_components=3)
     pca.fit(data)
@@ -52,10 +101,8 @@ def trace_artefact_3d(data, clusters, path,name,label_col="",footer=""):
         for k in range(len(c.index)):
             if label_col=="":
                 label=""
-                filter=""
             else:
                 label=c.name+"<br>"+str(c.labels[k])
-                filter=label[0]
 
             li_data.append({
                 'x': newdata[c.index[k], 0],
@@ -66,38 +113,7 @@ def trace_artefact_3d(data, clusters, path,name,label_col="",footer=""):
                 'cluster':c.name
             })
 
-    df_data = pd.DataFrame(li_data)
-
-    g = v3d.Vis3d()
-    g.width = '1200px'
-    g.height = '800px'
-    g.style = 'dot-color'
-    g.tooltip="""function (point) { return '<b>' + point.data.label + '</b>'; }"""
-    g.showPerspective = True
-    g.showXAxis=False
-    g.showYAxis=False
-    g.showZAxis = False
-    g.showGrid = True
-    g.keepAspectRatio = True
-    g.verticalRatio = 1.0
-
-    g.cameraPosition = {
-        'horizontal': -0.54,
-        'vertical': 0.5,
-        'distance': 2
-    }
-
-    g.plot(df_data)
-    g.html(df_data, save=True, save_path=path,save_name=name, dated=False)
-
-    footer=footer.replace("\n","<br>")
-
-    file=open(path+"/"+name+".html","a")
-    file.write("<p>" + footer + "</p>")
-    file.close()
-
-    return name+".html"
-
+    return draw_3D(li_data,path,name)
 
 def trace_artefact(G, clusters, data, label_col=""):
     pos = nx.spectral_layout(G, scale=5, dim=len(clusters))

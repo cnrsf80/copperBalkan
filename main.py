@@ -5,6 +5,8 @@ import scipy
 import datetime
 import numpy as np
 import pandas as pd
+import sklearn as sk
+
 import algo
 
 #Definitions
@@ -61,25 +63,25 @@ def draw_site_onmap(mymap:folium.Map, G, sites_clusters, sites:pd.DataFrame ,fil
         folium.Marker(pos,site["Site"]).add_to(mymap)
 
 
-def getOccurenceCluster(models):
+def getOccurenceCluster(models,filter=""):
     occurence = []
     list_clusters=[]
     list_model=[]
     list_algo=[]
     for m in models:
-        for c in m.clusters:
-            if list_clusters.__contains__(c):
-                k = list_clusters.index(c)
-                occurence[k] = occurence[k] + 1
-                list_model[k].append(m.name)
-                if not list_algo[k].__contains__(m.type):list_algo[k].append(m.type)
-            else:
-                print("Ajout de "+c.name)
-                list_clusters.append(c)
-                occurence.append(1)
-                list_algo.append([m.type])
-                list_model.append([m.name])
-
+        if(len(filter)==0 or m.type==filter):
+            for c in m.clusters:
+                if list_clusters.__contains__(c):
+                    k = list_clusters.index(c)
+                    occurence[k] = occurence[k] + 1
+                    list_model[k].append(m.name)
+                    if not list_algo[k].__contains__(m.type):list_algo[k].append(m.type)
+                else:
+                    print("Ajout de "+c.name)
+                    list_clusters.append(c)
+                    occurence.append(1)
+                    list_algo.append([m.type])
+                    list_model.append([m.name])
 
     rc=pd.DataFrame(columns=["Occurence","Cluster","Model"])
     rc["Occurence"]=occurence
@@ -93,14 +95,15 @@ def getOccurenceCluster(models):
 
 
 # Création des occurences
-def create_occurence_file(modeles, data, col_name, name,size):
+def create_occurence_file(modeles, data, col_name, name,size,filter=""):
     code = ""
-    rc = getOccurenceCluster(modeles[0:size])
+    rc = getOccurenceCluster(modeles[0:size],filter)
     for r in range(len(rc)):
         code = code + "\n<h1>Cluster présent dans " + str(round(100 * rc["Occurence"][r] / size)) + "% des algos</h1>"
         c = rc["Cluster"][r]
         code = code + c.print(data, col_name) + "\n"
         code = code + "\n présent dans " + ",".join(rc["Model"][r]) + "\n"
+
     print(create_html("occurences", code, "http://f80.fr/cnrs"))
 
     dfOccurences = pd.DataFrame(
@@ -130,6 +133,18 @@ def create_trace(modeles,col_name, url="http://f80.fr/cnrs",name="best_"):
         code = code + modeles[i].print_perfs()
 
     print(create_html("index_"+name, code, url))
+
+
+def create_synthes_file(modeles,labels_true=None,filename="synthese.xlsx"):
+    rc:pd.DataFrame=pd.DataFrame()
+    for m in modeles:
+        rc=rc.append(m.toDataframe(labels_true))
+
+    writer=pd.ExcelWriter("./saved/" + filename)
+    rc.to_excel(writer)
+    writer.save()
+
+    return rc
 
 
 #data = pd.read_excel("cnx013_supp_table_s1.xlsx").head(200)
@@ -165,66 +180,80 @@ def distance(i,j,name_i,name_j):
 mod=algo.model(data,col_name,range(1,n_mesures))
 mod.init_distances(distance)
 
-#true_labels=np.load("ideal_matrix.npy")
 true_labels=mod.ideal_matrix()
-#np.save("ideal_matrix",true_labels)
+reference=algo.model(data,col_name)
+reference.clusters_from_labels(true_labels)
+print(reference.print_cluster("\n"))
+
+
+for n_cluster in range(10,25):
+    modeles.append(copy.deepcopy(mod).execute("HAC_euc",
+                                lambda x:sk.cluster.AgglomerativeClustering(x["n_cluster"],x["method"]),
+                                {"n_cluster":n_cluster,"method":"eucledean"}))
+
+    modeles.append(copy.deepcopy(mod).execute("HAC_pre",
+                                lambda x:sk.cluster.AgglomerativeClustering(x["n_cluster"],x["method"]),
+                                {"n_cluster":n_cluster,"method":"precomputed"}))
+
+
+
+    modeles.append(copy.deepcopy(mod).execute("HAC_pre",
+                                lambda x:sk.cluster.AgglomerativeClustering(x["n_cluster"],x["method"]),
+                                {"n_cluster":n_cluster,"method":"precomputed"}))
+
+
+for min_elements in range(2, 6):
+    for eps in np.arange(0.1, 0.9, 0.1):
+        modeles.append(copy.deepcopy(mod).execute(
+            "DBSCAN",
+            lambda x: sk.DBSCAN(eps=x["eps"], min_samples=x["min_elements"], n_jobs=4),
+            {"n_cluster": n_cluster, "method": "precomputed"})
+        )
+
+for min_bin_freq in range(1,4):
+        for i in np.arange(0.1,0.9,0.1):
+            modeles.append(copy.deepcopy(mod).execute(
+                "MEANSHIFT",
+                lambda x: sk.cluster.MeanShift(bandwidth=x["bandwidth"],min_bin_freq=x["min_bin_freq"]),
+                {"bandwidth": i, "min_bin_freq": min_bin_freq})
+            )
+
+
+for n_neighbors in range(5,10):
+    for n_cluster in range(6,20):
+        modeles.append(copy.deepcopy(mod).execute(
+            "SPECTRALCLUSTERING",
+            lambda x: sk.cluster.SpectralClustering(n_cluster=x["n_cluster"],n_neighbors=x["n_neighbors"]),
+            {"n_cluster": n_cluster, "n_neighbors": n_neighbors})
+        )
+
+
+
+if False:
+    for method in ["euclidean"]:
+        for min_elements in range(10,2,-1):
+            for maxima_ratio in np.arange(0.3,0.9,0.1):
+                for rejection_ratio in np.arange(0.3,0.8,0.1):
+                    mod2= algo.create_clusters_from_optics(copy.deepcopy(mod),rejection_ratio ,maxima_ratio , min_elements,1,method)
+                    if not mod2 is None:
+                        print(mod2.init_metrics(true_labels))
+                        modeles.append(mod2)
+
 
 print("Neural gas")
-for passes in range(50,150,50):
-    for distance_toremove_edge in range(5,20,1):
-        mod2= algo.create_cluster_from_neuralgasnetwork(
-            copy.deepcopy(mod),
-            passes=passes,
-            distance_toremove_edge=distance_toremove_edge)
-        print(mod2.init_metrics(true_labels))
-        print(mod2.print_cluster())
-        modeles.append(mod2)
-
-exit(0)
-
-print("Arbre")
-for n_cluster in range(10,25):
-    mod2= algo.create_clusters_from_agglomerative(copy.deepcopy(mod), n_cluster)
-    print(mod2.init_metrics(true_labels))
-    modeles.append(mod2)
-
-for n_cluster in range(10,25):
-    mod2= algo.create_clusters_from_agglomerative(copy.deepcopy(mod), n_cluster,affinity="precomputed")
-    mod2.init_metrics(true_labels)
-    modeles.append(mod2)
-
-for method in ["euclidean"]:
-    for min_elements in range(2,10):
-        #for i in np.arange(0.3,2,0.5):
-        mod2= algo.create_clusters_from_dbscan(copy.deepcopy(mod), np.inf, min_elements,1,method)
-        print(mod2.init_metrics(true_labels))
-        modeles.append(mod2)
-
-for method in ["euclidean"]:
-    for min_elements in range(2,8):
-        for maxima_ratio in np.arange(0.3,0.8,0.3):
-            for rejection_ratio in np.arange(0.3,0.8,0.3):
-                mod2= algo.create_clusters_from_optics(copy.deepcopy(mod),rejection_ratio ,maxima_ratio , min_elements,1,method)
-                if not mod2 is None:
-                    print(mod2.init_metrics(true_labels))
-                    modeles.append(mod2)
-
-
-for method in ["euclidean"]:
-    print("meanshift")
-    for min_bin_freq in range(1,4):
-        for i in np.arange(0.1,0.5,0.05):
-            mod2= algo.create_model_from_meanshift(copy.deepcopy(mod), i,min_bin_freq,method)
+if True:
+    for passes in range(10,90,20):
+        for distance_toremove_edge in range(6,38,4):
+            mod2= algo.create_cluster_from_neuralgasnetwork(
+                copy.deepcopy(mod),
+                passes=passes,
+                distance_toremove_edge=distance_toremove_edge)
             print(mod2.init_metrics(true_labels))
+            print(mod2.print_cluster())
             modeles.append(mod2)
 
-for method in ["nearest_neighbors"]:
-    print("spectral_"+method)
-    for n_neighbors in range(5,10):
-        for i in range(6,20):
-            mod2=algo.create_clusters_from_spectralclustering(copy.deepcopy(mod),i,n_neighbors,method=method)
-            print(mod2.init_metrics(true_labels))
-            modeles.append(mod2)
+
+
 
 print(str(round(len(modeles)))+" models calculés")
 modeles.sort(key=lambda x:x.score,reverse=True)
@@ -233,7 +262,10 @@ size = round(len(modeles))
 url_base="http://f80.fr/cnrs"
 name=str(datetime.datetime.now()).split(".")[0].replace(":","").replace("2018-","")
 create_trace(modeles,col_name,url_base,"best"+name)
-print("Matrice d'occurence : "+url_base+"/"+create_occurence_file(modeles,data,col_name,"occurences",size)+".html")
+create_synthes_file(modeles,true_labels)
+print("Matrice d'occurence : "+url_base+"/"+create_occurence_file(modeles,data,col_name,"occurencesOPTICS",size,filter="OPTICS")+".html")
+print("Matrice d'occurence : "+url_base+"/"+create_occurence_file(modeles,data,col_name,"occurencesNEURALGAS",size,filter="NEURALGAS")+".html")
+
 
 exit(0)
 

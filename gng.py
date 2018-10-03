@@ -1,11 +1,16 @@
 # coding: utf-8
 import copy
+import draw
+import sklearn.decomposition as decomp
+import pandas as pd
 
 import numpy as np
 from scipy import spatial
 import networkx as nx
 import matplotlib.pyplot as plt
 from sklearn import decomposition
+
+import tools
 
 __authors__ = 'Adrien Guille'
 __email__ = 'adrien.guille@univ-lyon2.fr'
@@ -56,15 +61,17 @@ class GrowingNeuralGas:
         # 0. start with two units a and b at random position w_a and w_b
         w_a = [np.random.uniform(-2, 2) for _ in range(np.shape(self.data)[1])]
         w_b = [np.random.uniform(-2, 2) for _ in range(np.shape(self.data)[1])]
+
         self.network = nx.Graph()
         self.network.add_node(self.units_created, vector=w_a, error=0)
         self.units_created += 1
         self.network.add_node(self.units_created, vector=w_b, error=0)
         self.units_created += 1
+
         # 1. iterate through the data
         sequence = 0
         for p in range(passes):
-            print('   Pass #%d' % (p + 1))
+            tools.progress(p,passes)
             np.random.shuffle(self.data)
             steps = 0
             for observation in self.data:
@@ -94,8 +101,8 @@ class GrowingNeuralGas:
                 # 8. if the number of steps so far is an integer multiple of parameter l, insert a new unit
                 steps += 1
                 if steps % l == 0:
-                    if plot_evolution:
-                        self.plot_network('visualization/sequence/' + str(sequence) + '.png')
+                    if plot_evolution and len(self.network.nodes)>3:
+                        self.plot_network2("pass"+str(sequence))
                     sequence += 1
                     # 8.a determine the unit q with the maximum accumulated error
                     q = 0
@@ -166,8 +173,46 @@ class GrowingNeuralGas:
         plt.draw()
         plt.savefig(file_path)
 
+
+    def plot_network2(self, filename):
+        data=[]
+        colors=[]
+        li_lines = []
+
+        for n in self.network.nodes(data=True):
+            data.append(n[1]["vector"])
+            colors.append(1)
+
+        for n in self.data:
+            data.append(n)
+            colors.append(2)
+
+        for e in self.network.edges(data=True):
+            n1=data[e[0]]
+            n2=data[e[1]]
+            li_lines.append(n1)
+            li_lines.append(n2)
+
+        pca = decomp.pca.PCA(n_components=3)
+        m=np.asarray(data)
+        pca.fit(m)
+        newdata = pca.transform(m)
+
+        li_data=[]
+        for i in range(len(newdata)):
+            li_data.append({
+                'x': newdata[i, 0],
+                'y': newdata[i, 1],
+                'z': newdata[i, 2],
+                'style':colors[i],
+                'label':"noeud"+str(i),
+            })
+
+        draw.draw_3D(li_data,"./saved",filename,footer="",lines=li_lines)
+
     def number_of_clusters(self):
         return nx.number_connected_components(self.network)
+
 
     def cluster_data(self):
         unit_to_cluster = np.zeros(self.units_created)
